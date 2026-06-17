@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
 
+env:
+  APP_NAME: OpenOSUse
+  PROJECT_DIR: OpenOSUse
+  RELEASE_NOTES: release-notes/${{ github.ref_name }}.md
+
 jobs:
   build:
     name: Build and Release
@@ -17,12 +22,15 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Build Swift App
         run: |
-          cd OpenOSUse
+          cd ${{ env.PROJECT_DIR }}
           xcodebuild \
-            -project OpenOSUse.xcodeproj \
-            -scheme OpenOSUse \
+            -project ${{ env.APP_NAME }}.xcodeproj \
+            -scheme ${{ env.APP_NAME }} \
             -configuration Release \
             -derivedDataPath build \
             build \
@@ -37,25 +45,51 @@ jobs:
 
       - name: Build Gateway Server
         run: |
-          cd OpenOSUse/server
+          cd ${{ env.PROJECT_DIR }}/server
           npm ci
           npm run build
+
+      - name: Create DMG
+        run: |
+          APP_PATH="${{ env.PROJECT_DIR }}/build/Build/Products/Release/${{ env.APP_NAME }}.app"
+          DMG_NAME="${{ env.APP_NAME }}-${{ github.ref_name }}.dmg"
+          create-dmg \
+            --volname "${{ env.APP_NAME }} ${{ github.ref_name }}" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --app-drop-link 400 185 \
+            --icon "${{ env.APP_NAME }}" 200 185 \
+            --no-internet-enable \
+            "$DMG_NAME" \
+            "$APP_PATH"
+
+      - name: Prepare Release Notes
+        run: |
+          if [ -f "${{ env.RELEASE_NOTES }}" ]; then
+            echo "Using existing release notes: ${{ env.RELEASE_NOTES }}"
+          else
+            echo "## ${{ env.APP_NAME }} ${{ github.ref_name }}" > "${{ env.RELEASE_NOTES }}"
+            echo "" >> "${{ env.RELEASE_NOTES }}"
+            echo "See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." >> "${{ env.RELEASE_NOTES }}"
+          fi
 
       - name: Create Release Archive
         run: |
           mkdir -p release-artifacts
-          cp -R OpenOSUse/build/Build/Products/Release/OpenOSUse.app release-artifacts/
-          cp -R OpenOSUse/server/dist release-artifacts/gateway-server
+          cp -R "${{ env.PROJECT_DIR }}/build/Build/Products/Release/${{ env.APP_NAME }}.app" release-artifacts/
+          cp -R "${{ env.PROJECT_DIR }}/server/dist" release-artifacts/gateway-server
           cp CHANGELOG.md release-artifacts/
-          cp release-notes/v0.1.1.md release-artifacts/
+          cp ${{ env.RELEASE_NOTES }} release-artifacts/
           cd release-artifacts
-          zip -r ../OpenOSUse-v0.1.1.zip .
+          zip -r "../${{ env.APP_NAME }}-${{ github.ref_name }}.zip" .
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            --title "OpenOSUse ${{ github.ref_name }}" \
-            --notes-file release-notes/v0.1.1.md \
-            OpenOSUse-v0.1.1.zip
+            --title "${{ env.APP_NAME }} ${{ github.ref_name }}" \
+            --notes-file ${{ env.RELEASE_NOTES }} \
+            "${{ env.APP_NAME }}-${{ github.ref_name }}.dmg" \
+            "${{ env.APP_NAME }}-${{ github.ref_name }}.zip"
