@@ -1,16 +1,25 @@
 import Foundation
 import CoreGraphics
+import UserNotifications
 
 // ---------------------------------------------------------------------------
 // MARK: - TelemetryEntry
 // ---------------------------------------------------------------------------
 
-struct TelemetryEntry: Identifiable {
-    let id = UUID()
+struct TelemetryEntry: Identifiable, Codable {
+    let id: UUID
     let timestamp: Date
     let state: AgentOrchestrationLoop.AgentState
     let step: Int
     let message: String
+
+    init(id: UUID = UUID(), timestamp: Date = Date(), state: AgentOrchestrationLoop.AgentState, step: Int, message: String) {
+        self.id = id
+        self.timestamp = timestamp
+        self.state = state
+        self.step = step
+        self.message = message
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -120,8 +129,9 @@ final class AgentOrchestrationLoop: ObservableObject {
     @Published private(set) var stepCount = 0
     @Published var lastError: String?
     @Published private(set) var telemetryLogs: [TelemetryEntry] = []
+    @Published private(set) var objective = ""
 
-    enum AgentState: String, CaseIterable {
+    enum AgentState: String, CaseIterable, Codable {
         case idle = "Idle"
         case observing = "OBSERVE"
         case planning = "PLAN"
@@ -129,7 +139,7 @@ final class AgentOrchestrationLoop: ObservableObject {
         case coolingDown = "COOL DOWN"
     }
 
-    // MARK: Configuration (tweak before calling start())
+    // MARK: Configuration (applied from AgentSettings)
 
     var serverURL = URL(string: "http://localhost:3000/api/agent/step")!
     var provider = "anthropic"
@@ -148,9 +158,11 @@ final class AgentOrchestrationLoop: ObservableObject {
 
     func start(objective: String) {
         guard !isRunning else { return }
+        self.objective = objective
         reset()
         isRunning = true
         currentState = .observing
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         Task { await runLoop(objective: objective) }
     }
@@ -202,29 +214,42 @@ final class AgentOrchestrationLoop: ObservableObject {
             currentAction = "Sending to agent server…"
             log(.planning, "Sending screenshot (\(b64.count) bytes) to \(provider)/\(modelName)…")
 
-            guard let response = await sendStep(screenshot: b64, axTree: axTreeJSON, objective: objective) else {
-                lastError = "No response from agent server"
-                continue
+            let maxRetries = AgentSettings.shared.maxRetries
+            var response: StepResponse? = nil
+            for attempt in 1...maxRetries {
+                response = await sendStep(screenshot: b64, axTree: axTreeJSON, objective: objective)
+                if response != nil { break }
+                if attempt < maxRetries {
+                    log(.planning, "Retry \(attempt)/\(maxRetries)…")
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            }
+
+            guard let finalResponse = response else {
+                lastError = "No response from agent server after \(maxRetries) retries"
+                log(.planning, "ERROR: \(lastError ?? "")")
+                await finish()
+                return
             }
             guard isRunning else { break }
 
             stepCount += 1
-            currentAction = "\(response.tool): \(response.arguments)"
+            currentAction = "\(finalResponse.tool): \(finalResponse.arguments)"
 
             // ── 3. EXECUTE ────────────────────────────────────────────
             currentState = .executing
-            let result = await execute(response)
-            log(.executing, "\(response.tool)(\(argDescription(response.arguments))) → \(result)")
+            let result = await execute(finalResponse)
+            log(.executing, "\(finalResponse.tool)(\(argDescription(finalResponse.arguments))) → \(result)")
 
             history.append(HistoryEntry(
                 role: "assistant",
-                tool: response.tool,
-                arguments: response.arguments,
+                tool: finalResponse.tool,
+                arguments: finalResponse.arguments,
                 result: result
             ))
 
             // ── 4. CHECK FINISH ──────────────────────────────────────
-            if response.tool == "finish" {
+            if finalResponse.tool == "finish" {
                 await finish()
                 return
             }
@@ -239,7 +264,7 @@ final class AgentOrchestrationLoop: ObservableObject {
         await finish()
     }
 
-    // MARK: Server request
+    // MARK: Server request with timeout
 
     private func sendStep(screenshot: String, axTree: String?, objective: String) async -> StepResponse? {
         let resolvedKey: String
@@ -272,8 +297,9 @@ final class AgentOrchestrationLoop: ObservableObject {
         request.setValue(resolvedKey, forHTTPHeaderField: "X-Provider-API-Key")
         request.setValue(provider, forHTTPHeaderField: "X-Target-Provider")
         request.httpBody = try? encoder.encode(body)
+        request.timeoutInterval = AgentSettings.shared.requestTimeout
 
-        log(.planning, "POST \(stepCount+1) to \(provider)/\(modelName) (\(screenshot.count) bytes)")
+        log(.planning, "POST \(stepCount+1) to \(provider)/\(modelName) (\(screenshot.count) bytes, timeout: \(Int(request.timeoutInterval))s)")
 
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -364,6 +390,27 @@ final class AgentOrchestrationLoop: ObservableObject {
         log(.idle, message)
     }
 
+    func exportLogs() -> Data? {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try? encoder.encode(telemetryLogs)
+    }
+
+    // MARK: Notifications
+
+    private func sendNotification(title: String, body: String) {
+        guard AgentSettings.shared.showNotifications else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     // MARK: Telemetry
 
     private func log(_ state: AgentState, _ message: String) {
@@ -390,9 +437,18 @@ final class AgentOrchestrationLoop: ObservableObject {
     }
 
     private func finish() async {
-        log(.idle, "Session complete – \(stepCount) steps executed")
+        let steps = stepCount
+        let err = lastError
+
+        log(.idle, "Session complete – \(steps) steps executed")
         currentState = .idle
         isRunning = false
         await ScreenCaptureEngine.shared.stopCapture()
+
+        if let err = err {
+            sendNotification(title: "Agent Failed", body: err)
+        } else if steps > 0 {
+            sendNotification(title: "Agent Complete", body: "Finished in \(steps) steps: \(objective.prefix(80))")
+        }
     }
 }

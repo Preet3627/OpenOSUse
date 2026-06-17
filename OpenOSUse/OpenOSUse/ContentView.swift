@@ -1,19 +1,24 @@
+import UniformTypeIdentifiers
 import SwiftUI
 
 struct ContentView: View {
     @StateObject private var permissionManager = PermissionManager.shared
     @StateObject private var orchestrator = AgentOrchestrationLoop.shared
     @StateObject private var mcpServer = MCPServer.shared
+    @StateObject private var settings = AgentSettings.shared
     @State private var objectiveText = ""
     @State private var selectedTab: Tab = .dashboard
     @State private var useAXTree = false
     @State private var showMCPInfo = false
+    @State private var showingExporter = false
+    @State private var exportedJSON: Data?
 
     enum Tab: String, CaseIterable {
         case dashboard = "Dashboard"
         case permissions = "Permissions"
         case mcp = "MCP Server"
         case telemetry = "Telemetry"
+        case settings = "Settings"
 
         var icon: String {
             switch self {
@@ -21,6 +26,7 @@ struct ContentView: View {
             case .permissions: "lock.shield"
             case .mcp: "link"
             case .telemetry: "chart.bar"
+            case .settings: "gearshape"
             }
         }
     }
@@ -36,6 +42,12 @@ struct ContentView: View {
         )) { _ in
             Task { await permissionManager.refreshAll() }
         }
+        .fileExporter(
+            isPresented: $showingExporter,
+            document: exportedJSON.map { TelemetryDocument($0) },
+            contentType: .json,
+            defaultFilename: "telemetry-\(ISO8601DateFormatter().string(from: Date()))"
+        ) { _ in }
     }
 
     // MARK: - Sidebar
@@ -99,6 +111,7 @@ struct ContentView: View {
         case .permissions: permissionsView
         case .mcp: mcpView
         case .telemetry: telemetryView
+        case .settings: settingsView
         }
     }
 
@@ -606,6 +619,176 @@ struct ContentView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
+
+    // MARK: - Settings
+
+    private var settingsView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Settings")
+                        .font(Font.system(.title, design: .rounded).weight(.bold))
+                    Text("Agent configuration — persisted across launches")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Provider & Model
+                VStack(spacing: 14) {
+                    LabeledContent("Provider") {
+                        Picker("", selection: $settings.provider) {
+                            ForEach(settings.supportedProviders, id: \.0) { key, label in
+                                Text(label).tag(key)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 200)
+                    }
+
+                    LabeledContent("Model") {
+                        TextField("claude-3-5-sonnet-20241022", text: $settings.modelName)
+                            .textFieldStyle(.plain)
+                            .padding(8)
+                            .background(.thinMaterial)
+                            .cornerRadius(8)
+                            .frame(width: 200)
+                    }
+
+                    LabeledContent("Server URL") {
+                        TextField("http://localhost:3000/api/agent/step", text: $settings.serverURLString)
+                            .textFieldStyle(.plain)
+                            .padding(8)
+                            .background(.thinMaterial)
+                            .cornerRadius(8)
+                            .frame(width: 200)
+                    }
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+                // Tuning
+                VStack(spacing: 14) {
+                    LabeledContent("Cooldown") {
+                        HStack {
+                            Slider(value: $settings.coolDownMs, in: 0...3000, step: 100)
+                            Text("\(Int(settings.coolDownMs)) ms")
+                                .font(.caption.monospaced())
+                                .frame(width: 60)
+                        }
+                    }
+
+                    LabeledContent("Max Retries") {
+                        HStack {
+                            Stepper(value: $settings.maxRetries, in: 0...10) {
+                                Text("\(settings.maxRetries)")
+                                    .font(.caption.monospaced())
+                            }
+                            Text("attempts")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    LabeledContent("Request Timeout") {
+                        HStack {
+                            Slider(value: $settings.requestTimeout, in: 5...120, step: 5)
+                            Text("\(Int(settings.requestTimeout))s")
+                                .font(.caption.monospaced())
+                                .frame(width: 40)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+                // Toggles
+                VStack(spacing: 14) {
+                    Toggle(isOn: $settings.useAXTree) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Accessibility Tree")
+                                .font(.headline)
+                            Text("Capture element tree alongside screenshots")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Toggle(isOn: $settings.showNotifications) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("System Notifications")
+                                .font(.headline)
+                            Text("Show notification on agent finish or error")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+                // Actions
+                VStack(spacing: 12) {
+                    Button {
+                        settings.applyToOrchestrator()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Apply Settings")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(
+                            LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
+                    }
+                    .buttonStyle(.plain)
+
+                    if !orchestrator.telemetryLogs.isEmpty {
+                        Button {
+                            if let data = orchestrator.exportLogs() {
+                                exportedJSON = data
+                                showingExporter = true
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "square.and.arrow.up")
+                                Text("Export Telemetry")
+                            }
+                            .font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(.thinMaterial)
+                            .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+            }
+            .padding(20)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .fileExporter(
+            isPresented: $showingExporter,
+            document: exportedJSON.map { TelemetryDocument($0) },
+            contentType: .json,
+            defaultFilename: "telemetry-\(ISO8601DateFormatter().string(from: Date()))"
+        ) { _ in }
+    }
 }
 
 // MARK: - Effects
@@ -644,6 +827,19 @@ struct PulseEffect: ViewModifier {
                     scale = 1.3
                 }
             }
+    }
+}
+
+// MARK: - TelemetryDocument for export
+
+struct TelemetryDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    let data: Data
+
+    init(_ data: Data) { self.data = data }
+    init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }
 
