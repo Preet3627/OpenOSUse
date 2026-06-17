@@ -76,6 +76,43 @@ class SystemAutomationEngine {
         up.post(tap: .cghidEventTap)
     }
 
+    // MARK: - AX Element Clicking
+
+    func clickElement(label: String, role: String?) -> String {
+        do {
+            let tree = try AXElementReader.shared.readFrontmostAppTree(maxDepth: 12)
+            let found = findNode(in: tree, label: label, role: role)
+            guard let node = found else {
+                return "error: no element found with label \"\(label)\"\(role.map { " and role \"\($0)\"" } ?? "")"
+            }
+            let center = CGPoint(
+                x: node.frame.x + node.frame.width / 2,
+                y: node.frame.y + node.frame.height / 2
+            )
+            mouseClick(at: center)
+            return "ok (clicked \"\(node.title.isEmpty ? node.description : node.title)\" at \(Int(center.x)),\(Int(center.y)))"
+        } catch {
+            return "error: \(error.localizedDescription)"
+        }
+    }
+
+    private func findNode(in node: AXElementReader.AXNode, label: String, role: String?) -> AXElementReader.AXNode? {
+        let labelLower = label.lowercased()
+        let matchesLabel = node.title.lowercased() == labelLower
+            || node.description.lowercased() == labelLower
+            || node.value.lowercased() == labelLower
+        let matchesRole = role == nil || node.role == role
+        if matchesLabel && matchesRole {
+            return node
+        }
+        for child in node.children {
+            if let found = findNode(in: child, label: label, role: role) {
+                return found
+            }
+        }
+        return nil
+    }
+
     // MARK: - Keyboard Control
 
     func typeText(string: String) {

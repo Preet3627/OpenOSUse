@@ -13,6 +13,7 @@ import { z } from "zod";
 
 interface StepRequest {
   modelName: string;
+  visionModelName?: string;
   screenshot: string;
   objective: string;
   history: ActionEntry[];
@@ -49,9 +50,21 @@ const computerTools = {
     }),
   }),
 
+  click_element: tool({
+    description:
+      "Click a UI element identified by its on-screen label and optional accessibility role. " +
+      "Preferred over click(x,y) because it works regardless of window size or screen resolution. " +
+      'Example: click_element("Save", "AXButton") or click_element("Search", "AXTextField").',
+    parameters: z.object({
+      label: z.string().describe("The visible label, title, or description of the element to click"),
+      role: z.string().optional().describe("Accessibility role filter (e.g. AXButton, AXTextField, AXMenuItem)"),
+    }),
+  }),
+
   click: tool({
     description:
-      "Click at specific screen coordinates (points, top-left origin).",
+      "Click at specific screen coordinates (points, top-left origin). " +
+      "Prefer click_element instead when the target has a visible label.",
     parameters: z.object({
       x: z.number().describe("x-coordinate in screen points"),
       y: z.number().describe("y-coordinate in screen points"),
@@ -126,7 +139,8 @@ function buildSystemPrompt(objective: string, history: ActionEntry[]): string {
     `## Available tools (choose exactly ONE per step)`,
     ``,
     `- **open_app** — "Open or focus a macOS application. Requires bundleId."`,
-    `- **click** — "Click at screen coordinates (points, top-left origin)."`,
+    `- **click_element** — "Click an element by its on-screen label (e.g. click_element('Save', 'AXButton')). Prefer this over click(x,y)."`,
+    `- **click** — "Click at raw screen coordinates. Only use when the target has no visible label."`,
     `- **type** — "Type text at the current cursor position."`,
     `- **key_combo** — "Press a keyboard shortcut (e.g. cmd+space)."`,
     `- **wait** — "Pause for durationMs milliseconds."`,
@@ -147,9 +161,45 @@ function buildSystemPrompt(objective: string, history: ActionEntry[]): string {
 // Message builder
 // ---------------------------------------------------------------------------
 
+function createModelInstance(
+  provider: string,
+  apiKey: string | undefined,
+  modelName: string
+) {
+  switch (provider) {
+    case "ollama": {
+      const baseURL =
+        process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+      const ollama = createOllama({ baseURL });
+      return ollama.chat(modelName);
+    }
+    case "anthropic": {
+      return createAnthropic({ apiKey })(modelName);
+    }
+    case "google": {
+      return createGoogleGenerativeAI({ apiKey })(modelName);
+    }
+    case "groq": {
+      return createOpenAI({
+        apiKey,
+        baseURL: "https://api.groq.com/openai/v1",
+      }).chat(modelName);
+    }
+    case "grok": {
+      return createOpenAI({
+        apiKey,
+        baseURL: "https://api.x.ai/v1",
+      }).chat(modelName);
+    }
+    default: {
+      throw new Error(`Unsupported provider: "${provider}"`);
+    }
+  }
+}
+
 function buildMessages(
   systemPrompt: string,
-  screenshot: string,
+  screenshot: string | undefined,
   history: ActionEntry[]
 ) {
   const messages: any[] = [{ role: "system", content: systemPrompt }];
@@ -169,18 +219,20 @@ function buildMessages(
     }
   }
 
-  // Current screenshot
-  const imageData = screenshot.startsWith("data:")
-    ? screenshot
-    : `data:image/jpeg;base64,${screenshot}`;
+  // Current screenshot (if provided)
+  if (screenshot) {
+    const imageData = screenshot.startsWith("data:")
+      ? screenshot
+      : `data:image/jpeg;base64,${screenshot}`;
 
-  messages.push({
-    role: "user",
-    content: [
-      { type: "text", text: "Current screen. What is the next action?" },
-      { type: "image", image: imageData },
-    ],
-  });
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: "Current screen. What is the next action?" },
+        { type: "image", image: imageData },
+      ],
+    });
+  }
 
   return messages;
 }
@@ -206,6 +258,7 @@ app.post("/api/agent/step", async (req, res) => {
 
     const {
       modelName,
+      visionModelName,
       screenshot,
       objective,
       history = [],
@@ -219,10 +272,6 @@ app.post("/api/agent/step", async (req, res) => {
       });
       return;
     }
-    if (!screenshot) {
-      res.status(400).json({ error: "Missing screenshot" });
-      return;
-    }
     if (!apiKey && provider !== "ollama") {
       res.status(401).json({
         error: "Missing API key: provide x-provider-api-key header",
@@ -232,49 +281,63 @@ app.post("/api/agent/step", async (req, res) => {
 
     // --- build context ---
     const system = buildSystemPrompt(objective, history);
-    const messages = buildMessages(system, screenshot, history);
 
-    // --- instantiate model (inline, key from header) ---
-    let modelInstance;
-    switch (provider) {
-      case "ollama": {
-        const baseURL =
-          process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-        const ollama = createOllama({ baseURL });
-        modelInstance = ollama.chat(modelName);
-        break;
-      }
-      case "anthropic": {
-        modelInstance = createAnthropic({ apiKey })(modelName);
-        break;
-      }
-      case "google": {
-        modelInstance = createGoogleGenerativeAI({ apiKey })(modelName);
-        break;
-      }
-      case "groq": {
-        modelInstance = createOpenAI({
-          apiKey,
-          baseURL: "https://api.groq.com/openai/v1",
-        }).chat(modelName);
-        break;
-      }
-      case "grok": {
-        modelInstance = createOpenAI({
-          apiKey,
-          baseURL: "https://api.x.ai/v1",
-        }).chat(modelName);
-        break;
-      }
-      default: {
-        res.status(400).json({ error: `Unsupported provider: "${provider}"` });
-        return;
-      }
+    // --- two-step vision → chat pipeline (only when both screenshot and vision model are provided) ---
+    const useTwoStep = screenshot && visionModelName && visionModelName !== modelName;
+    let chatMessages: any[];
+
+    if (useTwoStep) {
+      // Step 1: describe screenshot via vision model
+      const visionModel = createModelInstance(provider, apiKey, visionModelName!);
+      const visionResult = await generateText({
+        model: visionModel,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text:
+                  "Describe this screenshot in detail. List all visible UI elements, " +
+                  "buttons, text fields, icons, and their on-screen positions " +
+                  "(coordinates). Be thorough — this description will be used by " +
+                  "a reasoning model to decide the next action.",
+              },
+              {
+                type: "image",
+                image: screenshot.startsWith("data:")
+                  ? screenshot
+                  : `data:image/jpeg;base64,${screenshot}`,
+              },
+            ],
+          },
+        ],
+        maxSteps: 1,
+      });
+
+      const sceneDescription = visionResult.text || "(no description)";
+
+      // Step 2: send text description (no image) to chat model
+      chatMessages = buildMessages(system, undefined, history);
+      chatMessages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Screen description from vision model:\n${sceneDescription}\n\nBased on this, what is the next action to achieve the objective?`,
+          },
+        ],
+      });
+    } else {
+      chatMessages = buildMessages(system, screenshot, history);
     }
 
+    // --- instantiate chat model ---
+    const chatModel = createModelInstance(provider, apiKey, modelName);
+
     const result = await generateText({
-      model: modelInstance,
-      messages,
+      model: chatModel,
+      messages: chatMessages,
       tools: computerTools,
       toolChoice: "required",
       maxSteps: 1,

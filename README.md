@@ -6,7 +6,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-cyan.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS_13%2B-blue)]()
-[![Version](https://img.shields.io/badge/Version-0.2.9.4-blue)]()
+[![Version](https://img.shields.io/badge/Version-2.1.0-blue)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
 [![Swift](https://img.shields.io/badge/Swift-5.9-orange)]()
 [![Built with ❤️](https://img.shields.io/badge/Built_With-%E2%9D%A4%EF%B8%8F-red)]()
@@ -17,7 +17,7 @@
 
 ---
 
-OpenOSUse lets a vision model observe your macOS screen and control your mouse and keyboard to automate any desktop task — opening apps, clicking buttons, typing text, navigating menus, and more. All OS interactions are permission-gated and fully transparent.
+OpenOSUse lets an AI agent observe and control your macOS desktop — opening apps, clicking buttons, typing text, navigating menus, and more. All OS interactions are permission-gated, Touch ID-verified, and fully transparent.
 
 ---
 
@@ -26,33 +26,35 @@ OpenOSUse lets a vision model observe your macOS screen and control your mouse a
 | Feature | Description |
 |---|---|
 | **👁️ Vision-Based Automation** | AI model watches your screen and decides what to click, type, or drag |
-| **🖱️ Full OS Control** | Mouse clicks, keyboard input, key combos, app launching, menu navigation |
-| **🔐 Permission-Gated Security** | Accessibility + Screen Recording permissions required; no silent control |
-| **🤖 Multi-Provider AI** | Supports Anthropic Claude, Google Gemini, Groq, Grok (X.AI), and local Ollama |
-| **📸 Real-Time Screen Capture** | ~30fps capture at 1280px width via SCStream |
-| **🌳 Accessibility Tree** | Structured AX element readout — role, title, position, size, children — sent alongside screenshots |
-| **🔌 MCP Protocol** | Model Context Protocol server (JSON-RPC 2.0 over TCP) for remote agent control |
-| **🔄 5-State Agent Loop** | Capture → Plan → Execute → Observe → Cooldown with telemetry logging |
+| **🖱️ Native AX Element Clicking** | `click_element` uses macOS Accessibility API to find and click UI elements by label — no vision needed, works at any resolution |
+| **🔐 Touch ID Verification** | Every chat session requires biometric authentication before the first click executes |
+| **🖥️ Full OS Control** | Mouse clicks, keyboard input, key combos, app launching, AX element targeting |
+| **🔒 Permission-Gated Security** | Accessibility + Screen Recording permissions required; no silent control |
+| **🤖 Multi-Provider AI** | Anthropic Claude, Google Gemini, Groq, Grok (X.AI), and local Ollama |
+| **📸 Optional Screenshots** | Toggle screen capture on/off. When off, agent uses AX tree only — no Screen Recording permission needed |
+| **👁️ Optional Vision Model** | Toggle separate vision model on/off. Two-step pipeline (vision describes → chat reasons) when both are active |
+| **🔄 Auto-Fetch Models** | Dropdown populated from provider's model list API, with manual refresh |
+| **🔀 Dual Model Selection** | Separate dropdowns for chat/reasoning model and vision model |
+| **🌳 Accessibility Tree** | Structured AX element readout sent alongside screenshots for richer context |
+| **🔌 MCP Protocol** | Model Context Protocol server (JSON-RPC 2.0) for remote agent control |
+| **🔄 5-State Agent Loop** | Observe → Plan → Execute → Cooldown → Repeat with full telemetry |
 | **🔑 Keychain Secrets** | API keys stored in macOS Keychain — never in plaintext |
-| **🎯 Coordinate Accuracy** | Vision coordinates auto-scaled to physical Retina points; built-in test tool |
+| **📊 Telemetry Dashboard** | Live step-by-step agent log with export to JSON |
 | **⚡ Low-Latency Gateway** | TypeScript/Express + Vercel AI SDK routes requests to any provider |
-| **📊 Telemetry Dashboard** | Live step-by-step agent log showing every decision and action |
-| **🧪 Coordinate Test Tool** | One-click validation that model sees what you see |
-| **🖥️ Lightweight** | Tested on i5-U / 8GB RAM — designed for low-spec hardware |
 
 ---
 
 ## 💡 Why OpenOSUse?
 
-Most automation tools today are **closed-source**, **cloud-locked**, or **require programming knowledge**. OpenOSUse was built to change that:
+Most automation tools are **closed-source**, **cloud-locked**, or **require programming knowledge**. OpenOSUse was built to change that:
 
 - **AI-First** — Describe what you want in natural language; the AI figures out the steps
 - **Privacy-First** — Choose your provider. Use local Ollama models for zero data leaving your machine
 - **Permission-Gated** — Every OS-level action requires explicit system permissions granted via macOS Security & Privacy
+- **Touch ID-Protected** — No click happens without biometric authorization
 - **Multi-Provider** — Not locked into any one AI vendor. Swap between Anthropic, Google, Groq, Grok, or Ollama freely
-- **Transparent** — Every decision the AI makes is logged in the telemetry dashboard. No black boxes
+- **Transparent** — Every decision the AI makes is logged in the telemetry dashboard
 - **Open Source** — Apache 2.0 licensed. Inspect, modify, and distribute freely
-- **Beginner-Friendly** — No terminal scripting required. Native macOS app with a clean UI
 - **Low-Spec Ready** — Optimized to run on older hardware (tested on i5-U / 8GB RAM)
 
 ---
@@ -74,8 +76,6 @@ npm install
 npm run build
 ```
 
-Place the compiled `OpenOSUseGateway` binary in the Xcode target's Resources, or use `npm run dev` during development.
-
 ### 2. Build & Run the App
 
 ```bash
@@ -83,11 +83,11 @@ open OpenOSUse.xcodeproj
 # Select scheme: OpenOSUse → Product → Run (⌘R)
 ```
 
-On first launch the app will request **Accessibility** and **Screen Recording** permissions. Grant both in **System Settings → Privacy & Security**.
+On first launch the app will request **Accessibility** and (if screenshot is enabled) **Screen Recording** permissions.
 
 ### 3. Configure an API Key
 
-Use the in-app UI or the command line to store a provider key in the Keychain:
+Use the in-app Settings tab or the command line:
 
 ```swift
 KeychainManager.shared.saveProviderKey(provider: "anthropic", key: "sk-ant-...")
@@ -96,8 +96,9 @@ KeychainManager.shared.saveProviderKey(provider: "anthropic", key: "sk-ant-...")
 ### 4. Run an Agent
 
 1. Type an objective (e.g. *"Open Safari and go to github.com"*)
-2. Click **Go**
-3. Watch the agent work — the telemetry log shows every step: capture, plan, execute, cooldown
+2. Click **Launch Agent**
+3. Approve Touch ID when prompted (first click only)
+4. Watch the agent work in the telemetry log
 
 ---
 
@@ -117,81 +118,91 @@ KeychainManager.shared.saveProviderKey(provider: "anthropic", key: "sk-ant-...")
 
 ```
 OpenOSUse/
-├── OpenOSUse.xcodeproj/              # Xcode project
+├── OpenOSUse.xcodeproj/               # Xcode project
 ├── OpenOSUse/
-│   ├── OpenOSUseApp.swift            # @main entry point
-│   ├── ContentView.swift             # Dashboard UI (Liquid Glass redesign)
-│   ├── PermissionManager.swift       # Accessibility + Screen Recording
-│   ├── ScreenCaptureEngine.swift     # SCStream capture (~30fps, 1280px)
-│   ├── AXElementReader.swift         # Accessibility Tree snapshot
-│   ├── SystemAutomationEngine.swift  # Mouse, keyboard, app launch, scaling
-│   ├── AgentOrchestrationLoop.swift  # 5-state agent loop + AX Tree support
-│   ├── MCPServer.swift               # Model Context Protocol server
-│   ├── GatewayBinaryHost.swift       # Child process management
-│   ├── KeychainManager.swift         # Secure API key storage
-│   ├── CoordinateAccuracyTest.swift  # Coordinate transform validation
+│   ├── OpenOSUseApp.swift             # @main entry point
+│   ├── ContentView.swift              # Dashboard UI with Settings tab
+│   ├── AgentSettings.swift            # UserDefaults-backed config + model fetching
+│   ├── PermissionManager.swift        # Accessibility + Screen Recording
+│   ├── ScreenCaptureEngine.swift      # SCStream capture (~30fps, 1280px)
+│   ├── AXElementReader.swift          # Accessibility Tree snapshot
+│   ├── ModelFetcher.swift             # Provider-specific model list APIs
+│   ├── SystemAutomationEngine.swift   # Mouse, keyboard, AX element clicking, scaling
+│   ├── AgentOrchestrationLoop.swift   # 5-state agent loop + Touch ID + conditional pipeline
+│   ├── MCPServer.swift                # Model Context Protocol server
+│   ├── GatewayBinaryHost.swift        # Child process management
+│   ├── KeychainManager.swift          # Secure API key storage
+│   ├── CoordinateAccuracyTest.swift   # Coordinate transform validation
 │   ├── Info.plist
 │   └── OpenOSUse.entitlements
 ├── server/
-│   ├── server.ts                     # Express + Vercel AI SDK gateway
+│   ├── server.ts                      # Express + Vercel AI SDK gateway
 │   ├── package.json
 │   ├── tsconfig.json
-│   ├── test_providers.sh
 │   └── .env.example
-├── CHANGELOG.md                      # Release history
-├── release-notes/                    # Per-version release notes
-│   └── v0.1.1.md
+├── Docs/                              # Full documentation site (Next.js)
+│   ├── index.md                       # Architecture overview
+│   ├── components/                    # Per-component docs
+│   └── server/                        # Gateway server docs
+├── CHANGELOG.md
+├── release-notes/
 └── .github/workflows/
-    └── release.yml                   # Tag-triggered build + release
+    └── release.yml
 ```
 
 ---
 
 ## 📖 Documentation
 
-Full component documentation is available on the [docs site](https://open-os-use-docs.vercel.app/) or locally in the [`Docs/`](Docs/) directory:
+Full documentation is available in the [`Docs/`](Docs/) directory:
 
-| Page | Description |
-|---|---|
-| [Landing Page](Docs/index.md) | Architecture overview, data flow, security model |
-| [ARCHITECTURE](Docs/ARCHITECTURE.md) | Layered architecture diagram and design decisions |
-| [OpenOSUseApp](Docs/components/OpenOSUseApp.md) | App entry point and lifecycle |
-| [ContentView](Docs/components/ContentView.md) | Dashboard UI layout and states |
-| [PermissionManager](Docs/components/PermissionManager.md) | Permission handling |
-| [ScreenCaptureEngine](Docs/components/ScreenCaptureEngine.md) | Screen capture internals |
-| [SystemAutomationEngine](Docs/components/SystemAutomationEngine.md) | Mouse/keyboard automation |
-| [AgentOrchestrationLoop](Docs/components/AgentOrchestrationLoop.md) | Agent loop state machine |
-| [AXElementReader](Docs/components/AXElementReader.md) | Accessibility Tree integration |
-| [MCPServer](Docs/components/MCPServer.md) | MCP protocol server |
-| [KeychainManager](Docs/components/KeychainManager.md) | Keychain storage API |
-| [CoordinateAccuracyTest](Docs/components/CoordinateAccuracyTest.md) | Coordinate transform testing |
-| [GatewayBinaryHost](Docs/components/GatewayBinaryHost.md) | Child process lifecycle |
-| [Gateway Server](Docs/server/gateway.md) | TypeScript server and provider routing |
-| [Server Configuration](Docs/server/configuration.md) | package.json, tsconfig, scripts |
+### Components
+
+| Component | File | Purpose |
+|---|---|---|
+| [App Entry Point](Docs/components/OpenOSUseApp.md) | `OpenOSUseApp.swift` | App lifecycle, gateway launch |
+| [Dashboard UI](Docs/components/ContentView.md) | `ContentView.swift` | All UI tabs, settings, telemetry |
+| [Agent Settings](Docs/components/AgentSettings.md) | `AgentSettings.swift` | Config persistence, model fetching, dual model selection |
+| [Permission Manager](Docs/components/PermissionManager.md) | `PermissionManager.swift` | Permission requests and monitoring |
+| [Screen Capture](Docs/components/ScreenCaptureEngine.md) | `ScreenCaptureEngine.swift` | Screen capture engine |
+| [System Automation](Docs/components/SystemAutomationEngine.md) | `SystemAutomationEngine.swift` | Mouse, keyboard, AX element clicking, scaling |
+| [Agent Loop](Docs/components/AgentOrchestrationLoop.md) | `AgentOrchestrationLoop.swift` | State machine, conditional pipeline, Touch ID |
+| [AX Reader](Docs/components/AXElementReader.md) | `AXElementReader.swift` | Accessibility tree parsing |
+| [Model Fetcher](Docs/components/ModelFetcher.md) | `ModelFetcher.swift` | Provider model list APIs |
+| [MCP Server](Docs/components/MCPServer.md) | `MCPServer.swift` | Remote agent control protocol |
+| [Keychain Manager](Docs/components/KeychainManager.md) | `KeychainManager.swift` | Secure key storage |
+| [Gateway Host](Docs/components/GatewayBinaryHost.md) | `GatewayBinaryHost.swift` | Child process management |
+
+### Server
+
+| Document | File | Purpose |
+|---|---|---|
+| [Gateway Server](Docs/server/gateway.md) | `server.ts` | Express app, provider routing, tools |
+| [Configuration](Docs/server/configuration.md) | `package.json` etc. | Build and dev configuration |
 
 ---
 
 ## 🔒 Security
 
-- **API keys stored in macOS Keychain** — never in plain-text files or configs
-- **Header-based key injection** — keys travel via `X-Provider-API-Key` header, never via environment variables or request body
-- **Empty process environment** — the gateway binary runs with `process.environment = [:]` to eliminate terminal/shell dependency
-- **App Sandbox + Hardened Runtime disabled** — required for Accessibility APIs, Screen Capture Kit, and background process management
-- **Permission-gated** — no OS action happens without explicit user-granted permissions
-- **Full telemetry** — every AI decision and action is logged to the dashboard
+- **API keys in Keychain** — never in plain-text files or configs
+- **Header-based key injection** — keys travel via `X-Provider-API-Key` header
+- **Touch ID verification** — every agent session requires biometric authentication before the first click
+- **Permission-gated** — no OS action without explicit user-granted permissions (Accessibility, Screen Recording)
+- **Optional screenshots** — toggle off to avoid Screen Recording permission entirely
+- **Full telemetry** — every AI decision and action is logged
 
 ---
 
 ## 📐 Coordinate System
 
-The vision model sees a downscaled 1280px-wide canvas. Mouse clicks are scaled back to physical Retina points using `CoordinateScaler`:
+When screenshot mode is enabled, the vision model sees a downscaled 1280px-wide canvas. Mouse clicks are scaled back to physical Retina points:
 
 ```
 physicalX = modelX × (screenWidth / 1280)
 physicalY = modelY × (screenHeight / captureHeight)
 ```
 
-Use the **Test Coordinates** button on the dashboard to verify the transform is accurate on your display.
+**Prefer `click_element`** over `click(x,y)` — it uses the Accessibility API to find elements by label, so it works at any resolution without coordinate scaling.
 
 ---
 
@@ -204,8 +215,6 @@ Contributions are welcome! Open an issue or submit a PR.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-Please ensure your code follows existing patterns and passes any linting/type checks.
 
 ---
 

@@ -19,6 +19,7 @@
 		A00000000000000024 /* AXElementReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000025 /* AXElementReader.swift */; };
 		A00000000000000026 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000027 /* MCPServer.swift */; };
 		A0000000000000002A /* AgentSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000002B /* AgentSettings.swift */; };
+		A0000000000000002C /* ModelFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000002D /* ModelFetcher.swift */; };
 		A00000000000000029 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000028 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -36,6 +37,7 @@
 		A00000000000000025 /* AXElementReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXElementReader.swift; sourceTree = "<group>"; };
 		A00000000000000027 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		A0000000000000002B /* AgentSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSettings.swift; sourceTree = "<group>"; };
+		A0000000000000002D /* ModelFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFetcher.swift; sourceTree = "<group>"; };
 		A0000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A0000000000000000B /* OpenOSUse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenOSUse.entitlements; sourceTree = "<group>"; };
 		A00000000000000028 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -75,6 +77,7 @@
 				A00000000000000025 /* AXElementReader.swift */,
 				A00000000000000027 /* MCPServer.swift */,
 				A0000000000000002B /* AgentSettings.swift */,
+				A0000000000000002D /* ModelFetcher.swift */,
 				A00000000000000028 /* Assets.xcassets */,
 				A0000000000000000A /* Info.plist */,
 				A0000000000000000B /* OpenOSUse.entitlements */,
@@ -166,6 +169,7 @@
 				A00000000000000024 /* AXElementReader.swift in Sources */,
 				A00000000000000026 /* MCPServer.swift in Sources */,
 				A0000000000000002A /* AgentSettings.swift in Sources */,
+				A0000000000000002C /* ModelFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

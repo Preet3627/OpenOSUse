@@ -2,48 +2,59 @@
 
 **Path:** `OpenOSUse/OpenOSUse/ContentView.swift`
 
-The main SwiftUI dashboard view. It is the single user interface the operator interacts with.
+The main SwiftUI view. Provides the dashboard, permissions management, MCP server controls, telemetry, and settings.
 
-## Layout
+## Tabs
 
-```
-┌─────────────────────────────────────────────┐
-│  OpenOSUse                                  │
-│  Permission Status                          │
-├─────────────────────────────────────────────┤
-│  ✅ Accessibility    Active                 │
-│  ✅ Screen Recording Active                 │
-├─────────────────────────────────────────────┤
-│  [Objective…                   ] [Go]       │
-│  [Test Coordinates] [Refresh Status]        │
-├─────────────────────────────────────────────┤
-│  Telemetry Log                              │
-│  [14:32:01.123] [OBSERVE] Capturing...     │
-│  [14:32:02.456] [PLAN]    Sending to...    │
-│  [14:32:03.789] [EXECUTE] click(x,y) → ok  │
-└─────────────────────────────────────────────┘
-```
+| Tab | Icon | Description |
+|---|---|---|
+| Dashboard | `square.grid.2x2` | Agent control, objective input, status, quick actions |
+| Permissions | `lock.shield` | Accessibility + Screen Recording permission status |
+| MCP Server | `link` | Model Context Protocol server controls |
+| Telemetry | `chart.bar` | Live step-by-step agent log |
+| Settings | `gearshape` | Provider, model, server, and feature configuration |
 
-## States
+## Dashboard States
 
-### Idle (agent not running)
-- Text field for entering the objective
-- **Go** button to start the agent loop (disabled when empty)
-- **Test Coordinates** — runs `CoordinateAccuracyTest.runAll()` which prints mapping tables then physically clicks each screen corner
-- **Refresh Status** — re-checks Accessibility and Screen Recording permissions
+### Idle
+- Text field for objective entry
+- **Launch Agent** button (disabled when empty)
+- Accessibility Tree toggle
+- Quick actions: Test Coordinates, Refresh Status, Read AX Tree
 
-### Running (agent active)
-- Step counter and current state label (`OBSERVE`/`PLAN`/`EXECUTE`/`COOL DOWN`)
+### Running
+- Step counter + state progress bar (`OBSERVE` → `PLAN` → `EXECUTE` → `COOL DOWN`)
 - Current action description
-- **Stop** button to halt the agent
+- **Stop** button
 
 ### Error
-- Red warning text showing `orchestrator.lastError`
+- Orange warning card showing `orchestrator.lastError`
 
-## Internal Components
+## Settings Tab
 
-### `PermissionRow`
-A reusable row showing a permission title, description, and either a green **Active** badge or a **Grant Access** button.
+### Provider & Models
+- **Provider** — dropdown of supported providers (Anthropic, Gemini, Groq, Grok, Ollama)
+- **Chat Model** — dropdown populated from `availableModels` (or text field fallback if fetch failed)
+- **Vision Model** — dropdown filtered to vision-capable models (or text field fallback)
+- **Refresh** button next to each model picker to re-fetch models
+- **Server URL** — text field for gateway server endpoint
 
-### `TelemetryEntry` formatting
-An extension on `TelemetryEntry` that formats log entries as `[HH:mm:ss.SSS] [STATE] message` using a monospaced font.
+### Tuning
+- **Cooldown** slider (0–3000ms)
+- **Max Retries** stepper (0–10)
+- **Request Timeout** slider (5–120s)
+
+### Feature Toggles
+- **Accessibility Tree** — capture AX element data alongside screenshots
+- **System Notifications** — macOS notifications on finish/error
+- **Screenshots** — enable/disable screen capture (disables Vision Model toggle when off)
+- **Vision Model** — enable/disable separate vision model for screenshot description
+
+### Actions
+- **Apply Settings** — copies current settings to `AgentOrchestrationLoop`
+- **Export Telemetry** — saves telemetry logs as JSON
+
+## Effects
+
+- `ShimmerEffect` — animated gradient overlay on the running badge
+- `PulseEffect` — pulsing green dot on the agent status card

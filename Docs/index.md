@@ -52,12 +52,14 @@
 | Component | File | Purpose |
 |---|---|---|
 | [App Entry Point](components/OpenOSUseApp.md) | `OpenOSUseApp.swift` | `@main` SwiftUI struct, launches gateway process, handles app lifecycle |
-| [Dashboard UI](components/ContentView.md) | `ContentView.swift` | Permission status, objective input, agent controls (Go/Stop), telemetry log |
+| [Dashboard UI](components/ContentView.md) | `ContentView.swift` | Permission status, objective input, agent controls (Go/Stop), telemetry log, settings |
+| [Agent Settings](components/AgentSettings.md) | `AgentSettings.swift` | UserDefaults-backed settings, dual model config, model fetching |
 | [Permission Manager](components/PermissionManager.md) | `PermissionManager.swift` | Requests and monitors Accessibility + Screen Recording permissions |
 | [Screen Capture Engine](components/ScreenCaptureEngine.md) | `ScreenCaptureEngine.swift` | SCStream-based screen capture, ~30fps, 1280px max width, JPEG output |
-| [System Automation Engine](components/SystemAutomationEngine.md) | `SystemAutomationEngine.swift` | Mouse move/click, keyboard type/key combos, coordinate scaling, app launch |
-| [Agent Orchestration Loop](components/AgentOrchestrationLoop.md) | `AgentOrchestrationLoop.swift` | 5-state agent loop, server communication, telemetry logging |
+| [System Automation Engine](components/SystemAutomationEngine.md) | `SystemAutomationEngine.swift` | Mouse move/click, AX element clicking, keyboard type/key combos, coordinate scaling, app launch |
+| [Agent Orchestration Loop](components/AgentOrchestrationLoop.md) | `AgentOrchestrationLoop.swift` | 5-state agent loop, conditional pipeline, Touch ID auth, telemetry logging |
 | [AX Element Reader](components/AXElementReader.md) | `AXElementReader.swift` | Reads Accessibility element tree of the frontmost app |
+| [Model Fetcher](components/ModelFetcher.md) | `ModelFetcher.swift` | Provider-specific model list API calls |
 | [MCP Server](components/MCPServer.md) | `MCPServer.swift` | Model Context Protocol server for remote agent control |
 | [Keychain Manager](components/KeychainManager.md) | `KeychainManager.swift` | Securely stores/retrieves API keys via the macOS Security framework |
 | [Coordinate Accuracy Test](components/CoordinateAccuracyTest.md) | `CoordinateAccuracyTest.swift` | Validates vision-canvas → physical-Retina coordinate transform |
@@ -74,13 +76,12 @@
 
 ## Data Flow
 
-1. **OBSERVE** — `ScreenCaptureEngine` captures a screenshot (max 1280 px wide, JPEG, ~30fps stream). If `useAXTree` is enabled, `AXElementReader` also reads the Accessibility element tree of the frontmost app.
-2. **PLAN** — `AgentOrchestrationLoop` base64-encodes the screenshot (and optionally the AX tree JSON) and POSTs it to `localhost:3001/api/agent/step` with `X-Provider-API-Key` and `X-Target-Provider` headers
-3. The TypeScript **gateway** reads the headers, instantiates the correct AI provider with the extracted API key, builds a system prompt + message history, and calls `generateText({ toolChoice: "required" })`
-4. The gateway returns `{ tool, arguments, thinking }` — one of `open_app`, `click`, `type`, `key_combo`, `wait`, or `finish`
-5. **EXECUTE** — `SystemAutomationEngine` performs the action (mouse click, keystroke, app launch, etc.)
-6. **COOL DOWN** — waits ~500ms for the UI to settle
-7. **REPEAT** — goes back to step 1 until `finish` is returned
+1. **OBSERVE** — if `useScreenshot` is enabled, `ScreenCaptureEngine` captures a screenshot. If `useAXTree` is enabled, `AXElementReader` reads the Accessibility element tree of the frontmost app. Both are optional.
+2. **PLAN** — `AgentOrchestrationLoop` POSTs context (screenshot, AX tree, objective, history) to `localhost:3001/api/agent/step` with `X-Provider-API-Key` and `X-Target-Provider` headers. If `useVisionModel` is on and the vision model differs from the chat model, a two-step pipeline is used: vision model describes screenshot → chat model decides action.
+3. The TypeScript **gateway** routes to the AI provider and calls `generateText({ toolChoice: "required" })`, returning `{ tool, arguments, thinking }`.
+4. **EXECUTE** — `SystemAutomationEngine` performs the action. The first `click` or `click_element` per session prompts **Touch ID**. `click_element` finds UI elements by their AX label (no vision needed).
+5. **COOL DOWN** — waits ~500ms for the UI to settle.
+6. **REPEAT** — goes back to step 1 until `finish` is returned.
 
 ---
 
@@ -91,3 +92,4 @@
 - **Gateway runs with empty environment** — `process.environment = [:]` proves no terminal configuration is needed
 - **App Sandbox disabled** — required for Accessibility (AX API) and Screen Recording (SCStream) permissions
 - **Hardened Runtime disabled** — required for `CGEvent` posting and child process execution
+- **Touch ID verification** — every agent session requires biometric authentication before the first click action executes. The `clickAuthorized` flag resets per session

@@ -58,6 +58,9 @@ jobs:
           npm ci
           npm run build
 
+      - name: Ad-hoc sign app bundle
+        run: codesign --force --deep --sign - "${{ env.PROJECT_DIR }}/build/Build/Products/Release/${{ env.APP_NAME }}.app"
+
       - name: Create DMG
         run: |
           APP_PATH="${{ env.PROJECT_DIR }}/build/Build/Products/Release/${{ env.APP_NAME }}.app"

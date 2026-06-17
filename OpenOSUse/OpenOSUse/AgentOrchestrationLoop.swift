@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import UserNotifications
+import LocalAuthentication
 
 // ---------------------------------------------------------------------------
 // MARK: - TelemetryEntry
@@ -90,7 +91,8 @@ struct HistoryEntry: Codable {
 struct StepRequest: Encodable {
     let provider: String
     let modelName: String
-    let screenshot: String
+    let visionModelName: String?
+    let screenshot: String?
     let axTree: String?
     let objective: String
     let history: [HistoryEntry]
@@ -144,11 +146,19 @@ final class AgentOrchestrationLoop: ObservableObject {
     var serverURL = URL(string: "http://localhost:3000/api/agent/step")!
     var provider = "anthropic"
     var modelName = "claude-3-5-sonnet-20241022"
+    var visionModelName = "claude-3-5-sonnet-20241022"
     var coolDownMs: UInt64 = 500
     let captureWidth: CGFloat = 1280
     var useAXTree = false
+    var useScreenshot = true
+    var useVisionModel = true
+
+    enum TouchIDScope: String, CaseIterable {
+        case click, screenshot, axTree, openApp
+    }
 
     private var history: [HistoryEntry] = []
+    private var authorizedScopes: Set<TouchIDScope> = []
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
@@ -175,35 +185,49 @@ final class AgentOrchestrationLoop: ObservableObject {
     // MARK: Loop body
 
     private func runLoop(objective: String) async {
-        guard await ScreenCaptureEngine.shared.startCaptureIfNeeded() else {
-            lastError = "Failed to start screen capture"
-            await finish()
-            return
-        }
-
-        log(.observing, "Agent started. Model: \(provider)/\(modelName)")
+        let caps = ["SCREENSHOT: \(useScreenshot)", "AXTREE: \(useAXTree)", "VISION: \(useVisionModel)"]
+        log(.observing, "Agent started. Chat: \(provider)/\(modelName), Vision: \(provider)/\(visionModelName)")
         log(.observing, "Objective: \(objective)")
-        if useAXTree {
-            log(.observing, "Accessibility Tree mode enabled")
+        log(.observing, "Capabilities: \(caps.joined(separator: ", "))")
+
+        if useScreenshot {
+            guard await auth(.screenshot, reason: "capture screenshots") else {
+                lastError = "Screenshot blocked: Touch ID declined or unavailable"
+                await finish()
+                return
+            }
+            guard await ScreenCaptureEngine.shared.startCaptureIfNeeded() else {
+                lastError = "Failed to start screen capture"
+                await finish()
+                return
+            }
         }
 
         while isRunning {
             // ── 1. OBSERVE ────────────────────────────────────────────
             currentState = .observing
-            currentAction = "Capturing screenshot…"
-            log(.observing, "Capturing screenshot…")
 
-            guard let screenshotData = await ScreenCaptureEngine.shared.captureScreenshot() else {
-                lastError = "Failed to capture screenshot"
-                await finish()
-                return
+            var b64: String?
+            if useScreenshot {
+                currentAction = "Capturing screenshot…"
+                log(.observing, "Capturing screenshot…")
+                guard let screenshotData = await ScreenCaptureEngine.shared.captureScreenshot() else {
+                    lastError = "Failed to capture screenshot"
+                    await finish()
+                    return
+                }
+                b64 = screenshotData.base64EncodedString()
+                guard isRunning else { break }
             }
-            let b64 = screenshotData.base64EncodedString()
-            guard isRunning else { break }
 
             // ── 1b. (optional) AX Tree ───────────────────────────────
             var axTreeJSON: String?
             if useAXTree {
+                guard await auth(.axTree, reason: "read the Accessibility element tree") else {
+                    lastError = "AX tree blocked: Touch ID declined or unavailable"
+                    await finish()
+                    return
+                }
                 currentAction = "Reading Accessibility Tree…"
                 axTreeJSON = AXElementReader.shared.readFrontmostAppTreeJSON()
                 log(.observing, "AX Tree captured (\(axTreeJSON?.count ?? 0) chars)")
@@ -212,7 +236,8 @@ final class AgentOrchestrationLoop: ObservableObject {
             // ── 2. PLAN ──────────────────────────────────────────────
             currentState = .planning
             currentAction = "Sending to agent server…"
-            log(.planning, "Sending screenshot (\(b64.count) bytes) to \(provider)/\(modelName)…")
+            let screenshotDesc = b64.map { "screenshot (\($0.count) bytes)" } ?? "no screenshot"
+            log(.planning, "Sending \(screenshotDesc) to \(provider)/\(modelName)…")
 
             let maxRetries = AgentSettings.shared.maxRetries
             var response: StepResponse? = nil
@@ -266,7 +291,7 @@ final class AgentOrchestrationLoop: ObservableObject {
 
     // MARK: Server request with timeout
 
-    private func sendStep(screenshot: String, axTree: String?, objective: String) async -> StepResponse? {
+    private func sendStep(screenshot: String?, axTree: String?, objective: String) async -> StepResponse? {
         let resolvedKey: String
         if provider == "ollama" {
             resolvedKey = KeychainManager.shared.getProviderKey(provider: "ollama")
@@ -285,7 +310,8 @@ final class AgentOrchestrationLoop: ObservableObject {
         let body = StepRequest(
             provider: provider,
             modelName: modelName,
-            screenshot: screenshot,
+            visionModelName: (useVisionModel && visionModelName != modelName) ? visionModelName : nil,
+            screenshot: useScreenshot ? screenshot : nil,
             axTree: axTree,
             objective: objective,
             history: history
@@ -299,7 +325,7 @@ final class AgentOrchestrationLoop: ObservableObject {
         request.httpBody = try? encoder.encode(body)
         request.timeoutInterval = AgentSettings.shared.requestTimeout
 
-        log(.planning, "POST \(stepCount+1) to \(provider)/\(modelName) (\(screenshot.count) bytes, timeout: \(Int(request.timeoutInterval))s)")
+        log(.planning, "POST \(stepCount+1) to \(provider)/\(modelName) (\(screenshot?.count ?? 0) bytes, timeout: \(Int(request.timeoutInterval))s)")
 
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -315,13 +341,28 @@ final class AgentOrchestrationLoop: ObservableObject {
     private func execute(_ step: StepResponse) async -> String {
         let engine = SystemAutomationEngine.shared
 
+        if step.tool == "click" || step.tool == "click_element" {
+            guard await auth(.click, reason: "click on screen") else {
+                return "error: Touch ID declined or unavailable"
+            }
+        }
+
         switch step.tool {
         case "open_app":
+            guard await auth(.openApp, reason: "launch or activate applications") else {
+                return "error: Touch ID declined or unavailable"
+            }
             guard let id = step.arguments["bundleId"]?.stringValue else {
                 return "error: missing bundleId"
             }
             engine.openApplication(bundleIdentifier: id)
             return "ok"
+
+        case "click_element":
+            guard let label = step.arguments["label"]?.stringValue
+            else { return "error: missing label" }
+            let role = step.arguments["role"]?.stringValue
+            return engine.clickElement(label: label, role: role)
 
         case "click":
             guard let x = step.arguments["x"]?.numberValue,
@@ -380,6 +421,39 @@ final class AgentOrchestrationLoop: ObservableObject {
         stepCount = 0
         lastError = nil
         history = []
+        authorizedScopes = []
+    }
+
+    private func auth(_ scope: TouchIDScope, reason: String) async -> Bool {
+        let settings = AgentSettings.shared
+        let needsAuth: Bool
+        switch scope {
+        case .click: needsAuth = settings.touchIDForClicks
+        case .screenshot: needsAuth = settings.touchIDForScreenshots
+        case .axTree: needsAuth = settings.touchIDForAXTree
+        case .openApp: needsAuth = settings.touchIDForAppLaunch
+        }
+        guard needsAuth else { return true }
+        guard !authorizedScopes.contains(scope) else { return true }
+
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            log(.idle, "Touch ID unavailable for \(scope.rawValue): \(error?.localizedDescription ?? "unknown")")
+            return false
+        }
+        let ok = await withCheckedContinuation { continuation in
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Authenticate to allow the AI agent to \(reason)") { success, evalError in
+                if !success {
+                    Task { @MainActor in
+                        self.lastError = "Touch ID cancelled for \(scope.rawValue): \(evalError?.localizedDescription ?? "unknown")"
+                    }
+                }
+                continuation.resume(returning: success)
+            }
+        }
+        if ok { authorizedScopes.insert(scope) }
+        return ok
     }
 
     func clearLogs() {
@@ -443,7 +517,9 @@ final class AgentOrchestrationLoop: ObservableObject {
         log(.idle, "Session complete – \(steps) steps executed")
         currentState = .idle
         isRunning = false
-        await ScreenCaptureEngine.shared.stopCapture()
+        if useScreenshot {
+            await ScreenCaptureEngine.shared.stopCapture()
+        }
 
         if let err = err {
             sendNotification(title: "Agent Failed", body: err)

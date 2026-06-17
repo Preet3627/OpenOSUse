@@ -646,13 +646,85 @@ struct ContentView: View {
                         .frame(width: 200)
                     }
 
-                    LabeledContent("Model") {
-                        TextField("claude-3-5-sonnet-20241022", text: $settings.modelName)
-                            .textFieldStyle(.plain)
-                            .padding(8)
-                            .background(.thinMaterial)
-                            .cornerRadius(8)
-                            .frame(width: 200)
+                    LabeledContent("Chat Model") {
+                        HStack(spacing: 6) {
+                            if settings.isLoadingModels {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 16)
+                            }
+                            if settings.availableModels.isEmpty {
+                                TextField("claude-3-5-sonnet-20241022", text: $settings.modelName)
+                                    .textFieldStyle(.plain)
+                                    .padding(8)
+                                    .background(.thinMaterial)
+                                    .cornerRadius(8)
+                                    .frame(width: 160)
+                            } else {
+                                Picker("", selection: $settings.modelName) {
+                                    ForEach(settings.availableModels, id: \.self) { m in
+                                        Text(m).tag(m)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 160)
+                            }
+                            Button {
+                                Task { await settings.fetchModels() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(settings.isLoadingModels)
+                        }
+                    }
+
+                    LabeledContent("Vision Model") {
+                        HStack(spacing: 6) {
+                            if settings.isLoadingModels {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 16)
+                            }
+                            if settings.supportedVisionModels.isEmpty {
+                                TextField(text: $settings.visionModelName) {
+                                    Text(settings.modelName)
+                                }
+                                .textFieldStyle(.plain)
+                                .padding(8)
+                                .background(.thinMaterial)
+                                .cornerRadius(8)
+                                .frame(width: 160)
+                            } else {
+                                Picker("", selection: $settings.visionModelName) {
+                                    ForEach(settings.supportedVisionModels, id: \.self) { m in
+                                        Text(m).tag(m)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 160)
+                            }
+                            Button {
+                                Task { await settings.fetchModels() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(settings.isLoadingModels)
+                        }
+                    }
+
+                    if let err = settings.modelFetchError {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                            Text(err)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
 
                     LabeledContent("Server URL") {
@@ -723,6 +795,87 @@ struct ContentView: View {
                             Text("System Notifications")
                                 .font(.headline)
                             Text("Show notification on agent finish or error")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Toggle(isOn: $settings.useScreenshot) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Screenshots")
+                                .font(.headline)
+                            Text("Capture screen for visual context (requires Screen Recording permission)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Toggle(isOn: $settings.useVisionModel) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Vision Model")
+                                .font(.headline)
+                            Text("Use a separate vision model to describe screenshots")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(!settings.useScreenshot)
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+                // Touch ID Permissions
+                VStack(spacing: 14) {
+                    HStack {
+                        Image(systemName: "touchid")
+                            .font(.title3)
+                            .foregroundStyle(.cyan)
+                        Text("Touch ID Permissions")
+                            .font(.headline)
+                    }
+                    Text("Require biometric verification before each action type — once per session, not per click")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Toggle(isOn: $settings.touchIDForClicks) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Clicks")
+                                .font(.subheadline.weight(.medium))
+                            Text("click / click_element actions")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Toggle(isOn: $settings.touchIDForScreenshots) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Screenshots")
+                                .font(.subheadline.weight(.medium))
+                            Text("Screen capture via SCStream")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(!settings.useScreenshot)
+
+                    Toggle(isOn: $settings.touchIDForAXTree) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Accessibility Tree")
+                                .font(.subheadline.weight(.medium))
+                            Text("Reading UI element tree via AX API")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .disabled(!settings.useAXTree)
+
+                    Toggle(isOn: $settings.touchIDForAppLaunch) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("App Launch")
+                                .font(.subheadline.weight(.medium))
+                            Text("Opening or activating applications")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
