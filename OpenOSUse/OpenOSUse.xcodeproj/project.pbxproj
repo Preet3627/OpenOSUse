@@ -1,0 +1,265 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A0000000000000000C /* OpenOSUseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000007 /* OpenOSUseApp.swift */; };
+		A0000000000000000D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000008 /* ContentView.swift */; };
+		A0000000000000000E /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000009 /* PermissionManager.swift */; };
+		A00000000000000019 /* ScreenCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000018 /* ScreenCaptureEngine.swift */; };
+		A0000000000000001B /* SystemAutomationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000001A /* SystemAutomationEngine.swift */; };
+		A0000000000000001D /* AgentOrchestrationLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000001C /* AgentOrchestrationLoop.swift */; };
+		A0000000000000001F /* CoordinateAccuracyTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000001E /* CoordinateAccuracyTest.swift */; };
+		A00000000000000021 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000020 /* KeychainManager.swift */; };
+		A00000000000000023 /* GatewayBinaryHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000022 /* GatewayBinaryHost.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00000000000000006 /* OpenOSUse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenOSUse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000007 /* OpenOSUseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenOSUseApp.swift; sourceTree = "<group>"; };
+		A00000000000000008 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00000000000000009 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
+		A00000000000000018 /* ScreenCaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureEngine.swift; sourceTree = "<group>"; };
+		A0000000000000001A /* SystemAutomationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAutomationEngine.swift; sourceTree = "<group>"; };
+		A0000000000000001C /* AgentOrchestrationLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentOrchestrationLoop.swift; sourceTree = "<group>"; };
+		A0000000000000001E /* CoordinateAccuracyTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateAccuracyTest.swift; sourceTree = "<group>"; };
+		A00000000000000020 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		A00000000000000022 /* GatewayBinaryHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayBinaryHost.swift; sourceTree = "<group>"; };
+		A0000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A0000000000000000B /* OpenOSUse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenOSUse.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000003 /* OpenOSUse */,
+				A00000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000003 /* OpenOSUse */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000007 /* OpenOSUseApp.swift */,
+				A00000000000000008 /* ContentView.swift */,
+				A00000000000000009 /* PermissionManager.swift */,
+				A00000000000000018 /* ScreenCaptureEngine.swift */,
+				A0000000000000001A /* SystemAutomationEngine.swift */,
+				A0000000000000001C /* AgentOrchestrationLoop.swift */,
+				A0000000000000001E /* CoordinateAccuracyTest.swift */,
+				A00000000000000020 /* KeychainManager.swift */,
+				A00000000000000022 /* GatewayBinaryHost.swift */,
+				A0000000000000000A /* Info.plist */,
+				A0000000000000000B /* OpenOSUse.entitlements */,
+			);
+			path = OpenOSUse;
+			sourceTree = "<group>";
+		};
+		A00000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000006 /* OpenOSUse.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000005 /* OpenOSUse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000016 /* Build configuration list for PBXNativeTarget "OpenOSUse" */;
+			buildPhases = (
+				A0000000000000000F /* Sources */,
+				A00000000000000011 /* Frameworks */,
+				A00000000000000010 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenOSUse;
+			productName = OpenOSUse;
+			productReference = A00000000000000006 /* OpenOSUse.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = A00000000000000017 /* Build configuration list for PBXProject "OpenOSUse" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00000000000000002;
+			productRefGroup = A00000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000005 /* OpenOSUse */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000010 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A0000000000000000F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0000000000000000C /* OpenOSUseApp.swift in Sources */,
+				A0000000000000000D /* ContentView.swift in Sources */,
+				A0000000000000000E /* PermissionManager.swift in Sources */,
+				A00000000000000019 /* ScreenCaptureEngine.swift in Sources */,
+				A0000000000000001B /* SystemAutomationEngine.swift in Sources */,
+				A0000000000000001D /* AgentOrchestrationLoop.swift in Sources */,
+				A0000000000000001F /* CoordinateAccuracyTest.swift in Sources */,
+				A00000000000000021 /* KeychainManager.swift in Sources */,
+				A00000000000000023 /* GatewayBinaryHost.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = "OpenOSUse/OpenOSUse.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = OpenOSUse/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daksh.OpenOSUse;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A00000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = "OpenOSUse/OpenOSUse.entitlements";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = OpenOSUse/Info.plist;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daksh.OpenOSUse;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A00000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A00000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000016 /* Build configuration list for PBXNativeTarget "OpenOSUse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000012 /* Debug */,
+				A00000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000017 /* Build configuration list for PBXProject "OpenOSUse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000014 /* Debug */,
+				A00000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000001 /* Project object */;
+}

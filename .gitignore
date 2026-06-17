@@ -1,0 +1,21 @@
+# Xcode
+*.xcuserdata
+*.xcworkspace/xcuserdata
+DerivedData/
+build/
+
+# macOS
+.DS_Store
+*.swp
+*.lock
+*.log
+
+# Server
+node_modules/
+dist/
+.env
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
