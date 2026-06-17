@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.0] — 2026-06-17
+
+### Added
+
+- **Settings Persistence** — `AgentSettings` ObservableObject with UserDefaults-backed storage for provider, model name, server URL, cooldown, max retries, request timeout, AX tree toggle, and notifications toggle. New Settings tab in the UI.
+- **Network Retry & Timeout** — Automatic retry (up to 3 attempts) when the agent server is unreachable, with configurable request timeout (default 30s).
+- **System Notifications** — macOS notifications on agent finish or error (UNUserNotificationCenter). Configurable via Settings.
+- **Telemetry Export** — Export full telemetry logs as JSON via file save dialog.
+- **Objective Tracking** — `objective` published property on AgentOrchestrationLoop for notification context.
+- **Codable Support** — TelemetryEntry and AgentState now conform to Codable for JSON export.
+
+### Changed
+
+- ContentView now includes a Settings tab with provider picker, model/server fields, sliders/steppers for tuning, toggles, and Apply/Export buttons.
+- AgentOrchestrationLoop uses AgentSettings for retry count, timeout, notifications.
+
+### Fixed
+
+- Removed unused Double.nonzero extension.
+- Fixed @MainActor isolation on AgentSettings.applyToOrchestrator().
+- Fixed ReadConfiguration.file optional chaining for Swift 6 compatibility.
+
 ## [0.1.1] — 2026-06-17
 
 ### Added
