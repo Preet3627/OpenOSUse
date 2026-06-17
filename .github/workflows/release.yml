@@ -14,8 +14,8 @@ on:
 env:
   APP_NAME: OpenOSUse
   PROJECT_DIR: OpenOSUse
-  RELEASE_TAG: ${{ github.ref_name || inputs.tag }}
-  RELEASE_NOTES: release-notes/${{ github.ref_name || inputs.tag }}.md
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  RELEASE_NOTES: release-notes/${{ inputs.tag || github.ref_name }}.md
 
 jobs:
   build:
