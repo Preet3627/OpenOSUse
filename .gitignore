@@ -16,6 +16,11 @@ dist/
 .env
 *.tsbuildinfo
 
+# Docs (Next.js)
+Docs/node_modules/
+Docs/.next/
+Docs/out/
+
 # IDE
 .vscode/
 .idea/
