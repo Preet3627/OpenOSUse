@@ -4,11 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and release (e.g. v0.1.0)'
+        required: true
+        type: string
 
 env:
   APP_NAME: OpenOSUse
   PROJECT_DIR: OpenOSUse
-  RELEASE_NOTES: release-notes/${{ github.ref_name }}.md
+  RELEASE_TAG: ${{ github.ref_name || inputs.tag }}
+  RELEASE_NOTES: release-notes/${{ github.ref_name || inputs.tag }}.md
 
 jobs:
   build:
@@ -18,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -52,9 +61,9 @@ jobs:
       - name: Create DMG
         run: |
           APP_PATH="${{ env.PROJECT_DIR }}/build/Build/Products/Release/${{ env.APP_NAME }}.app"
-          DMG_NAME="${{ env.APP_NAME }}-${{ github.ref_name }}.dmg"
+          DMG_NAME="${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.dmg"
           create-dmg \
-            --volname "${{ env.APP_NAME }} ${{ github.ref_name }}" \
+            --volname "${{ env.APP_NAME }} ${{ env.RELEASE_TAG }}" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
@@ -69,7 +78,7 @@ jobs:
           if [ -f "${{ env.RELEASE_NOTES }}" ]; then
             echo "Using existing release notes: ${{ env.RELEASE_NOTES }}"
           else
-            echo "## ${{ env.APP_NAME }} ${{ github.ref_name }}" > "${{ env.RELEASE_NOTES }}"
+            echo "## ${{ env.APP_NAME }} ${{ env.RELEASE_TAG }}" > "${{ env.RELEASE_NOTES }}"
             echo "" >> "${{ env.RELEASE_NOTES }}"
             echo "See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." >> "${{ env.RELEASE_NOTES }}"
           fi
@@ -82,14 +91,23 @@ jobs:
           cp CHANGELOG.md release-artifacts/
           cp ${{ env.RELEASE_NOTES }} release-artifacts/
           cd release-artifacts
-          zip -r "../${{ env.APP_NAME }}-${{ github.ref_name }}.zip" .
+          zip -r "../${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.zip" .
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ env.APP_NAME }} ${{ github.ref_name }}" \
-            --notes-file ${{ env.RELEASE_NOTES }} \
-            "${{ env.APP_NAME }}-${{ github.ref_name }}.dmg" \
-            "${{ env.APP_NAME }}-${{ github.ref_name }}.zip"
+          if gh release view "${{ env.RELEASE_TAG }}" > /dev/null 2>&1; then
+            echo "Release ${{ env.RELEASE_TAG }} exists — uploading assets"
+            gh release upload "${{ env.RELEASE_TAG }}" \
+              "${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.dmg" \
+              "${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.zip" \
+              --clobber
+          else
+            echo "Creating release ${{ env.RELEASE_TAG }}"
+            gh release create "${{ env.RELEASE_TAG }}" \
+              --title "${{ env.APP_NAME }} ${{ env.RELEASE_TAG }}" \
+              --notes-file ${{ env.RELEASE_NOTES }} \
+              "${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.dmg" \
+              "${{ env.APP_NAME }}-${{ env.RELEASE_TAG }}.zip"
+          fi
