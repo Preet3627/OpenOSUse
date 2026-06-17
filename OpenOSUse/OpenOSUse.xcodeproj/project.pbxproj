@@ -16,6 +16,8 @@
 		A0000000000000001F /* CoordinateAccuracyTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000001E /* CoordinateAccuracyTest.swift */; };
 		A00000000000000021 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000020 /* KeychainManager.swift */; };
 		A00000000000000023 /* GatewayBinaryHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000022 /* GatewayBinaryHost.swift */; };
+		A00000000000000024 /* AXElementReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000025 /* AXElementReader.swift */; };
+		A00000000000000026 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000027 /* MCPServer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +31,8 @@
 		A0000000000000001E /* CoordinateAccuracyTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinateAccuracyTest.swift; sourceTree = "<group>"; };
 		A00000000000000020 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
 		A00000000000000022 /* GatewayBinaryHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayBinaryHost.swift; sourceTree = "<group>"; };
+		A00000000000000025 /* AXElementReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXElementReader.swift; sourceTree = "<group>"; };
+		A00000000000000027 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		A0000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A0000000000000000B /* OpenOSUse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenOSUse.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -64,6 +68,8 @@
 				A0000000000000001E /* CoordinateAccuracyTest.swift */,
 				A00000000000000020 /* KeychainManager.swift */,
 				A00000000000000022 /* GatewayBinaryHost.swift */,
+				A00000000000000025 /* AXElementReader.swift */,
+				A00000000000000027 /* MCPServer.swift */,
 				A0000000000000000A /* Info.plist */,
 				A0000000000000000B /* OpenOSUse.entitlements */,
 			);
@@ -150,6 +156,8 @@
 				A0000000000000001F /* CoordinateAccuracyTest.swift in Sources */,
 				A00000000000000021 /* KeychainManager.swift in Sources */,
 				A00000000000000023 /* GatewayBinaryHost.swift in Sources */,
+				A00000000000000024 /* AXElementReader.swift in Sources */,
+				A00000000000000026 /* MCPServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

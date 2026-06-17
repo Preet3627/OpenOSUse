@@ -82,6 +82,7 @@ struct StepRequest: Encodable {
     let provider: String
     let modelName: String
     let screenshot: String
+    let axTree: String?
     let objective: String
     let history: [HistoryEntry]
 }
@@ -117,7 +118,7 @@ final class AgentOrchestrationLoop: ObservableObject {
     @Published private(set) var currentState: AgentState = .idle
     @Published private(set) var currentAction = ""
     @Published private(set) var stepCount = 0
-    @Published private(set) var lastError: String?
+    @Published var lastError: String?
     @Published private(set) var telemetryLogs: [TelemetryEntry] = []
 
     enum AgentState: String, CaseIterable {
@@ -135,6 +136,7 @@ final class AgentOrchestrationLoop: ObservableObject {
     var modelName = "claude-3-5-sonnet-20241022"
     var coolDownMs: UInt64 = 500
     let captureWidth: CGFloat = 1280
+    var useAXTree = false
 
     private var history: [HistoryEntry] = []
     private let decoder = JSONDecoder()
@@ -161,7 +163,6 @@ final class AgentOrchestrationLoop: ObservableObject {
     // MARK: Loop body
 
     private func runLoop(objective: String) async {
-        // Ensure screen capture is active
         guard await ScreenCaptureEngine.shared.startCaptureIfNeeded() else {
             lastError = "Failed to start screen capture"
             await finish()
@@ -170,6 +171,9 @@ final class AgentOrchestrationLoop: ObservableObject {
 
         log(.observing, "Agent started. Model: \(provider)/\(modelName)")
         log(.observing, "Objective: \(objective)")
+        if useAXTree {
+            log(.observing, "Accessibility Tree mode enabled")
+        }
 
         while isRunning {
             // ── 1. OBSERVE ────────────────────────────────────────────
@@ -185,12 +189,20 @@ final class AgentOrchestrationLoop: ObservableObject {
             let b64 = screenshotData.base64EncodedString()
             guard isRunning else { break }
 
+            // ── 1b. (optional) AX Tree ───────────────────────────────
+            var axTreeJSON: String?
+            if useAXTree {
+                currentAction = "Reading Accessibility Tree…"
+                axTreeJSON = AXElementReader.shared.readFrontmostAppTreeJSON()
+                log(.observing, "AX Tree captured (\(axTreeJSON?.count ?? 0) chars)")
+            }
+
             // ── 2. PLAN ──────────────────────────────────────────────
             currentState = .planning
             currentAction = "Sending to agent server…"
             log(.planning, "Sending screenshot (\(b64.count) bytes) to \(provider)/\(modelName)…")
 
-            guard let response = await sendStep(screenshot: b64, objective: objective) else {
+            guard let response = await sendStep(screenshot: b64, axTree: axTreeJSON, objective: objective) else {
                 lastError = "No response from agent server"
                 continue
             }
@@ -229,9 +241,7 @@ final class AgentOrchestrationLoop: ObservableObject {
 
     // MARK: Server request
 
-    private func sendStep(screenshot: String, objective: String) async -> StepResponse? {
-        // Read the provider key from the Keychain instead of trusting the
-        // backend to pull it from a .env file.
+    private func sendStep(screenshot: String, axTree: String?, objective: String) async -> StepResponse? {
         let resolvedKey: String
         if provider == "ollama" {
             resolvedKey = KeychainManager.shared.getProviderKey(provider: "ollama")
@@ -251,6 +261,7 @@ final class AgentOrchestrationLoop: ObservableObject {
             provider: provider,
             modelName: modelName,
             screenshot: screenshot,
+            axTree: axTree,
             objective: objective,
             history: history
         )
@@ -343,6 +354,14 @@ final class AgentOrchestrationLoop: ObservableObject {
         stepCount = 0
         lastError = nil
         history = []
+    }
+
+    func clearLogs() {
+        telemetryLogs.removeAll()
+    }
+
+    func addTelemetry(message: String) {
+        log(.idle, message)
     }
 
     // MARK: Telemetry

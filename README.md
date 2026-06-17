@@ -30,6 +30,8 @@ OpenOSUse lets a vision model observe your macOS screen and control your mouse a
 | **🔐 Permission-Gated Security** | Accessibility + Screen Recording permissions required; no silent control |
 | **🤖 Multi-Provider AI** | Supports Anthropic Claude, Google Gemini, Groq, Grok (X.AI), and local Ollama |
 | **📸 Real-Time Screen Capture** | ~30fps capture at 1280px width via SCStream |
+| **🌳 Accessibility Tree** | Structured AX element readout — role, title, position, size, children — sent alongside screenshots |
+| **🔌 MCP Protocol** | Model Context Protocol server (JSON-RPC 2.0 over TCP) for remote agent control |
 | **🔄 5-State Agent Loop** | Capture → Plan → Execute → Observe → Cooldown with telemetry logging |
 | **🔑 Keychain Secrets** | API keys stored in macOS Keychain — never in plaintext |
 | **🎯 Coordinate Accuracy** | Vision coordinates auto-scaled to physical Retina points; built-in test tool |
@@ -118,29 +120,36 @@ OpenOSUse/
 ├── OpenOSUse.xcodeproj/              # Xcode project
 ├── OpenOSUse/
 │   ├── OpenOSUseApp.swift            # @main entry point
-│   ├── ContentView.swift             # Dashboard UI
+│   ├── ContentView.swift             # Dashboard UI (Liquid Glass redesign)
 │   ├── PermissionManager.swift       # Accessibility + Screen Recording
 │   ├── ScreenCaptureEngine.swift     # SCStream capture (~30fps, 1280px)
+│   ├── AXElementReader.swift         # Accessibility Tree snapshot
 │   ├── SystemAutomationEngine.swift  # Mouse, keyboard, app launch, scaling
-│   ├── AgentOrchestrationLoop.swift  # 5-state agent loop + server comms
+│   ├── AgentOrchestrationLoop.swift  # 5-state agent loop + AX Tree support
+│   ├── MCPServer.swift               # Model Context Protocol server
 │   ├── GatewayBinaryHost.swift       # Child process management
 │   ├── KeychainManager.swift         # Secure API key storage
 │   ├── CoordinateAccuracyTest.swift  # Coordinate transform validation
 │   ├── Info.plist
 │   └── OpenOSUse.entitlements
-└── server/
-    ├── server.ts                     # Express + Vercel AI SDK gateway
-    ├── package.json
-    ├── tsconfig.json
-    ├── test_providers.sh
-    └── .env.example
+├── server/
+│   ├── server.ts                     # Express + Vercel AI SDK gateway
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── test_providers.sh
+│   └── .env.example
+├── CHANGELOG.md                      # Release history
+├── release-notes/                    # Per-version release notes
+│   └── v0.1.1.md
+└── .github/workflows/
+    └── release.yml                   # Tag-triggered build + release
 ```
 
 ---
 
 ## 📖 Documentation
 
-Full component documentation is in the [`Docs/`](Docs/) directory:
+Full component documentation is available on the [docs site](https://open-os-use-docs.vercel.app/) or locally in the [`Docs/`](Docs/) directory:
 
 | Page | Description |
 |---|---|
@@ -152,6 +161,8 @@ Full component documentation is in the [`Docs/`](Docs/) directory:
 | [ScreenCaptureEngine](Docs/components/ScreenCaptureEngine.md) | Screen capture internals |
 | [SystemAutomationEngine](Docs/components/SystemAutomationEngine.md) | Mouse/keyboard automation |
 | [AgentOrchestrationLoop](Docs/components/AgentOrchestrationLoop.md) | Agent loop state machine |
+| [AXElementReader](Docs/components/AXElementReader.md) | Accessibility Tree integration |
+| [MCPServer](Docs/components/MCPServer.md) | MCP protocol server |
 | [KeychainManager](Docs/components/KeychainManager.md) | Keychain storage API |
 | [CoordinateAccuracyTest](Docs/components/CoordinateAccuracyTest.md) | Coordinate transform testing |
 | [GatewayBinaryHost](Docs/components/GatewayBinaryHost.md) | Child process lifecycle |

@@ -3,98 +3,599 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var permissionManager = PermissionManager.shared
     @StateObject private var orchestrator = AgentOrchestrationLoop.shared
+    @StateObject private var mcpServer = MCPServer.shared
     @State private var objectiveText = ""
-    @State private var apiKeyText = ""
+    @State private var selectedTab: Tab = .dashboard
+    @State private var useAXTree = false
+    @State private var showMCPInfo = false
+
+    enum Tab: String, CaseIterable {
+        case dashboard = "Dashboard"
+        case permissions = "Permissions"
+        case mcp = "MCP Server"
+        case telemetry = "Telemetry"
+
+        var icon: String {
+            switch self {
+            case .dashboard: "square.grid.2x2"
+            case .permissions: "lock.shield"
+            case .mcp: "link"
+            case .telemetry: "chart.bar"
+            }
+        }
+    }
 
     var body: some View {
-        VStack(spacing: 16) {
-            // ── Header ────────────────────────────────────────────
+        HSplitView {
+            sidebar
+            mainContent
+        }
+        .frame(minWidth: 720, minHeight: 520)
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification
+        )) { _ in
+            Task { await permissionManager.refreshAll() }
+        }
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        VStack(spacing: 0) {
             VStack(spacing: 4) {
+                Image(systemName: "diamond.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(
+                        .linearGradient(colors: [.cyan, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
                 Text("OpenOSUse")
-                    .font(.largeTitle).fontWeight(.bold)
-                Text("Permission Status")
-                    .font(.title2).foregroundColor(.secondary)
+                    .font(Font.system(.title3, design: .rounded).weight(.bold))
+                Text(orchestrator.isRunning ? orchestrator.currentState.rawValue : "Ready")
+                    .font(.caption2)
+                    .foregroundColor(orchestrator.isRunning ? .green : .secondary)
+            }
+            .padding(.vertical, 20)
+
+            Divider()
+
+            ForEach(Tab.allCases, id: \.self) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(width: 20)
+                        Text(tab.rawValue)
+                            .font(.system(size: 13, weight: selectedTab == tab ? .semibold : .regular))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        selectedTab == tab ?
+                        Color.accentColor.opacity(0.15) : Color.clear
+                    )
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
             }
 
-            // ── Permission rows ───────────────────────────────────
-            VStack(spacing: 8) {
-                PermissionRow(
+            Spacer()
+        }
+        .frame(width: 180)
+        .background(.ultraThinMaterial)
+    }
+
+    // MARK: - Main Content
+
+    @ViewBuilder
+    private var mainContent: some View {
+        switch selectedTab {
+        case .dashboard: dashboardView
+        case .permissions: permissionsView
+        case .mcp: mcpView
+        case .telemetry: telemetryView
+        }
+    }
+
+    // MARK: - Dashboard
+
+    private var dashboardView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                headerCard
+                if !orchestrator.isRunning {
+                    controlCard
+                } else {
+                    agentStatusCard
+                }
+                if let err = orchestrator.lastError {
+                    errorCard(err)
+                }
+                quickActionsCard
+            }
+            .padding(20)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Agent Control")
+                        .font(Font.system(.title, design: .rounded).weight(.bold))
+                    Text("Describe a task and let the AI handle it")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if orchestrator.isRunning {
+                    shimmerBadge
+                }
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+    }
+
+    private var shimmerBadge: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(.green)
+                .frame(width: 8, height: 8)
+                .modifier(ShimmerEffect())
+            Text("Step \(orchestrator.stepCount)")
+                .font(.caption.bold())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(.green.opacity(0.12))
+        .cornerRadius(12)
+    }
+
+    private var controlCard: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: "text.bubble")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                TextField("What should I do? (e.g. \"Open Safari and go to github.com\")", text: $objectiveText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+                    .padding(10)
+                    .background(.thinMaterial)
+                    .cornerRadius(10)
+            }
+
+            HStack {
+                Toggle(isOn: $useAXTree) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "tree")
+                            .font(.caption)
+                        Text("Accessibility Tree")
+                            .font(.caption)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                Spacer()
+
+                Button {
+                    guard !objectiveText.trimmingCharacters(in: .whitespaces).isEmpty
+                    else { return }
+                    orchestrator.useAXTree = useAXTree
+                    orchestrator.start(objective: objectiveText)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Launch Agent")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(
+                        LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                    .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+                .disabled(objectiveText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(objectiveText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+    }
+
+    private var agentStatusCard: some View {
+        VStack(spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("Agent Running")
+                            .font(.headline)
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 8))
+                            .foregroundColor(.green)
+                            .modifier(PulseEffect())
+                    }
+                    Text(orchestrator.currentAction)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Button {
+                    orchestrator.stop()
+                } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(.red.opacity(0.12))
+                        .foregroundColor(.red)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+
+            stateProgressBar
+        }
+        .padding(16)
+        .background(.ultraThinMaterial)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+    }
+
+    private var stateProgressBar: some View {
+        HStack(spacing: 0) {
+            ForEach(AgentOrchestrationLoop.AgentState.allCases, id: \.self) { state in
+                let isActive = orchestrator.currentState == state
+                let isPast = pastState(state)
+
+                VStack(spacing: 4) {
+                    Circle()
+                        .fill(
+                            isActive ? Color.cyan :
+                            isPast ? Color.green : Color.gray.opacity(0.25)
+                        )
+                        .frame(width: 10, height: 10)
+                    Text(state.rawValue)
+                        .font(.system(size: 8, weight: isActive ? .bold : .regular))
+                        .foregroundColor(isActive ? .primary : .secondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                if state != AgentOrchestrationLoop.AgentState.allCases.last {
+                    Rectangle()
+                        .fill(
+                            isPast ? Color.green : Color.gray.opacity(0.15)
+                        )
+                        .frame(height: 2)
+                        .frame(maxWidth: 20)
+                }
+            }
+        }
+    }
+
+    private func pastState(_ state: AgentOrchestrationLoop.AgentState) -> Bool {
+        let all = AgentOrchestrationLoop.AgentState.allCases
+        guard let currentIdx = all.firstIndex(of: orchestrator.currentState),
+              let stateIdx = all.firstIndex(of: state)
+        else { return false }
+        return stateIdx < currentIdx
+    }
+
+    private func errorCard(_ err: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+            Text(err)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+            Button {
+                orchestrator.lastError = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
+        }
+        .padding(12)
+        .background(.orange.opacity(0.08))
+        .cornerRadius(10)
+    }
+
+    private var quickActionsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Quick Actions")
+                .font(Font.system(.headline, design: .rounded))
+
+            HStack(spacing: 12) {
+                quickActionButton(
+                    icon: "target",
+                    label: "Test Coords",
+                    action: { CoordinateAccuracyTest.runAll() }
+                )
+                quickActionButton(
+                    icon: "arrow.clockwise",
+                    label: "Refresh Status",
+                    action: { Task { await permissionManager.refreshAll() } }
+                )
+                quickActionButton(
+                    icon: "tree",
+                    label: "Read AX Tree",
+                    action: { readAXTree() }
+                )
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+    }
+
+    private func quickActionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title3)
+                Text(label)
+                    .font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(.thinMaterial)
+            .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func readAXTree() {
+        let json = AXElementReader.shared.readFrontmostAppTreeJSON()
+        orchestrator.addTelemetry(message: "AX Tree: \(json.prefix(200))...")
+    }
+
+    // MARK: - Permissions
+
+    private var permissionsView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Permissions")
+                        .font(Font.system(.title, design: .rounded).weight(.bold))
+                    Text("Required system permissions for agent operation")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+
+                permissionCard(
+                    icon: "figure.accessibility",
                     title: "Accessibility",
                     description: "Control other apps via Accessibility APIs",
                     isGranted: permissionManager.accessibilityGranted,
                     action: permissionManager.requestAccessibilityPermission
                 )
-                PermissionRow(
+
+                permissionCard(
+                    icon: "rectangle.dashed",
                     title: "Screen Recording",
                     description: "Observe and capture screen content",
                     isGranted: permissionManager.screenRecordingGranted,
                     action: permissionManager.requestScreenRecordingPermission
                 )
             }
+            .padding(20)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func permissionCard(icon: String, title: String, description: String, isGranted: Bool, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(isGranted ? .green : .secondary)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            if isGranted {
+                Label("Active", systemImage: "checkmark.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.green.opacity(0.1))
+                    .cornerRadius(8)
+            } else {
+                Button("Grant Access") { action() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+        .padding(14)
+        .background(.ultraThinMaterial)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+    }
+
+    // MARK: - MCP Server
+
+    private var mcpView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("MCP Server")
+                        .font(Font.system(.title, design: .rounded).weight(.bold))
+                    Text("Model Context Protocol — drive the agent remotely")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(spacing: 16) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Status")
+                                .font(.headline)
+                            Text(mcpServer.isRunning ? "Listening on port \(mcpServer.port)" : "Stopped")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle(isOn: Binding(
+                            get: { mcpServer.isRunning },
+                            set: { if $0 { mcpServer.start() } else { mcpServer.stop() } }
+                        )) {
+                            EmptyView()
+                        }
+                        .toggleStyle(.switch)
+                    }
+
+                    if mcpServer.isRunning {
+                        Divider()
+                        HStack {
+                            Image(systemName: "person.2")
+                                .foregroundColor(.secondary)
+                            Text("Connections: \(mcpServer.connectionCount)")
+                                .font(.caption)
+                            Spacer()
+                            Text("TCP :\(mcpServer.port)")
+                                .font(.caption.monospaced())
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(.ultraThinMaterial)
+                .cornerRadius(14)
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+                if mcpServer.isRunning {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Available Tools")
+                            .font(.headline)
+                        mcpToolRow("screenshot", "Capture current screen as base64 JPEG")
+                        mcpToolRow("axTree", "Read Accessibility element tree of frontmost app")
+                        mcpToolRow("click", "Click at screen coordinates (x, y)")
+                        mcpToolRow("type", "Type text at current focus")
+                        mcpToolRow("open_app", "Open an app by bundle ID")
+                    }
+                    .padding(16)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(14)
+                    .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                }
+            }
+            .padding(20)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func mcpToolRow(_ name: String, _ description: String) -> some View {
+        HStack(spacing: 10) {
+            Text(name)
+                .font(Font.system(.caption, design: .monospaced).weight(.medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.cyan.opacity(0.1))
+                .cornerRadius(6)
+            Text(description)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - Telemetry
+
+    private var telemetryView: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Telemetry")
+                        .font(Font.system(.title, design: .rounded).weight(.bold))
+                    Text("\(orchestrator.telemetryLogs.count) entries — live agent log")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if !orchestrator.telemetryLogs.isEmpty {
+                    Button("Clear") {
+                        orchestrator.clearLogs()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            .padding(16)
 
             Divider()
 
-            // ── Agent controls ────────────────────────────────────
-            if !orchestrator.isRunning {
-                HStack {
-                    TextField("Objective…", text: $objectiveText)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Go") {
-                        guard !objectiveText.trimmingCharacters(in: .whitespaces).isEmpty
-                        else { return }
-                        orchestrator.start(objective: objectiveText)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(objectiveText.trimmingCharacters(in: .whitespaces).isEmpty)
+            if orchestrator.telemetryLogs.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary.opacity(0.4))
+                    Text("No telemetry yet")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("Run an agent to see step-by-step logs")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.6))
                 }
-
-                HStack(spacing: 12) {
-                    Button("Test Coordinates") { CoordinateAccuracyTest.runAll() }
-                        .buttonStyle(.bordered).controlSize(.small)
-                    Button("Refresh Status") {
-                        Task { await permissionManager.refreshAll() }
-                    }
-                    .buttonStyle(.bordered).controlSize(.small)
-                }
+                .frame(maxHeight: .infinity)
             } else {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Step \(orchestrator.stepCount) • \(orchestrator.currentState.rawValue)")
-                            .font(.headline)
-                        Text(orchestrator.currentAction)
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Button("Stop") { orchestrator.stop() }
-                        .buttonStyle(.bordered).tint(.red).controlSize(.small)
-                }
-            }
-
-            if let err = orchestrator.lastError {
-                Text("⚠ \(err)").font(.caption).foregroundColor(.red)
-            }
-
-            // ── Telemetry log ─────────────────────────────────────
-            if !orchestrator.telemetryLogs.isEmpty {
-                Divider()
-                Text("Telemetry Log")
-                    .font(.caption).fontWeight(.semibold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
                 ScrollViewReader { proxy in
                     ScrollView(.vertical) {
-                        LazyVStack(alignment: .leading, spacing: 2) {
+                        LazyVStack(alignment: .leading, spacing: 1) {
                             ForEach(orchestrator.telemetryLogs) { entry in
-                                Text(entry.formatted)
-                                    .font(.system(size: 9, design: .monospaced))
-                                    .foregroundColor(entry.state == .idle ? .green : .secondary)
-                                    .id(entry.id)
+                                HStack(spacing: 8) {
+                                    Text(entry.timestampFormatted)
+                                        .font(.system(size: 9, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 80, alignment: .leading)
+                                    Text("[\(entry.state.rawValue)]")
+                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .foregroundColor(entry.stateColor)
+                                        .frame(width: 60, alignment: .leading)
+                                    Text(entry.message)
+                                        .font(.system(size: 9, design: .monospaced))
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 3)
+                                .background(entry.id == orchestrator.telemetryLogs.last?.id ? Color.accentColor.opacity(0.05) : Color.clear)
+                                .id(entry.id)
                             }
                         }
                     }
-                    .frame(height: 160)
-                    .background(Color.black.opacity(0.05))
-                    .cornerRadius(6)
+                    .background(.ultraThinMaterial)
                     .onChange(of: orchestrator.telemetryLogs.count) { _ in
                         withAnimation(.none) {
                             proxy.scrollTo(orchestrator.telemetryLogs.last?.id, anchor: .bottom)
@@ -103,49 +604,65 @@ struct ContentView: View {
                 }
             }
         }
-        .padding()
-        .frame(minWidth: 520, minHeight: 520)
-        .onReceive(NotificationCenter.default.publisher(
-            for: NSApplication.didBecomeActiveNotification
-        )) { _ in
-            Task { await permissionManager.refreshAll() }
-        }
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
-// MARK: - PermissionRow
+// MARK: - Effects
 
-struct PermissionRow: View {
-    let title: String
-    let description: String
-    let isGranted: Bool
-    let action: () -> Void
+struct ShimmerEffect: ViewModifier {
+    @State private var phase: CGFloat = 0
 
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.headline)
-                Text(description).font(.caption).foregroundColor(.secondary)
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                LinearGradient(
+                    colors: [.clear, .white.opacity(0.5), .clear],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .rotationEffect(.degrees(30))
+                .offset(x: phase * 200)
+                .mask(content)
+            )
+            .onAppear {
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                    phase = 1
+                }
             }
-            Spacer()
-            if isGranted {
-                Label("Active", systemImage: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-            } else {
-                Button("Grant Access") { action() }
-                    .buttonStyle(.bordered).controlSize(.small)
+    }
+}
+
+struct PulseEffect: ViewModifier {
+    @State private var scale: CGFloat = 1
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(scale)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    scale = 1.3
+                }
             }
-        }
-        .padding(.vertical, 4)
     }
 }
 
 // MARK: - TelemetryEntry formatting
 
 extension TelemetryEntry {
-    var formatted: String {
+    var timestampFormatted: String {
         let df = DateFormatter()
         df.dateFormat = "HH:mm:ss.SSS"
-        return "[\(df.string(from: timestamp))] [\(state.rawValue)] \(message)"
+        return df.string(from: timestamp)
+    }
+
+    var stateColor: Color {
+        switch state {
+        case .idle: .green
+        case .observing: .blue
+        case .planning: .orange
+        case .executing: .purple
+        case .coolingDown: .cyan
+        }
     }
 }

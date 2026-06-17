@@ -8,31 +8,44 @@
 │                ContentView.swift (SwiftUI)                   │
 │  - Permission status, objective input, agent controls        │
 │  - Telemetry log with auto-scroll                            │
+│  - Sidebar navigation, MCP toggle, AX Tree toggle            │
+│  - Liquid Glass / glass material aesthetic                   │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
 │                   Orchestration Layer                        │
 │             AgentOrchestrationLoop.swift                     │
 │  - 5-state agent loop (OBSERVE → PLAN → EXECUTE → COOLDOWN) │
+│  - Optional AX Tree capture alongside screenshots            │
 │  - State management + telemetry logging                      │
 │  - Server communication (URLSession)                         │
 └────────────┬────────────────────────────┬───────────────────┘
              │                            │
 ┌────────────▼────────────┐  ┌────────────▼──────────────────┐
-│    Capture Layer         │  │    Automation Layer            │
-│ ScreenCaptureEngine.swift│  │ SystemAutomationEngine.swift   │
-│ - SCStream screen capture│  │ - Mouse move/click             │
-│ - 1280px max width       │  │ - Keyboard type/key combos     │
-│ - ~30 fps, JPEG output   │  │ - App launch                   │
-│ - Thread-safe frame buf  │  │ - CoordinateScaler             │
+│    Capture Layer         │  │    Perception Layer            │
+│ ScreenCaptureEngine.swift│  │ AXElementReader.swift          │
+│ - SCStream screen capture│  │ - AXUIElement tree traversal   │
+│ - 1280px max width       │  │ - Role, title, position, size  │
+│ - ~30 fps, JPEG output   │  │ - Frontmost app snapshot       │
+│ - Thread-safe frame buf  │  │ - JSON output                  │
 └──────────────────────────┘  └───────────────────────────────┘
              │                            │
              └───────────┬────────────────┘
                          │
 ┌────────────────────────▼───────────────────────────────────┐
+│                      Automation Layer                        │
+│              SystemAutomationEngine.swift                    │
+│  - Mouse move/click                                          │
+│  - Keyboard type/key combos                                  │
+│  - App launch                                                │
+│  - CoordinateScaler                                          │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
 │                      Data Layer                              │
 │  - KeychainManager.swift (Secure API key storage)            │
 │  - GatewayBinaryHost.swift (Child process management)        │
+│  - MCPServer.swift (JSON-RPC 2.0 over TCP)                   │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
@@ -49,7 +62,8 @@
 ```
 OBSERVE
   │ ScreenCaptureEngine.captureScreenshot()
-  │ Returns JPEG Data → base64 encode
+  │ (optional) AXElementReader.readFrontmostAppTreeJSON()
+  │ Returns JPEG Data → base64 encode (+ AX tree JSON)
   ▼
 PLAN
   │ Read API key from KeychainManager

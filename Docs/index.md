@@ -57,6 +57,8 @@
 | [Screen Capture Engine](components/ScreenCaptureEngine.md) | `ScreenCaptureEngine.swift` | SCStream-based screen capture, ~30fps, 1280px max width, JPEG output |
 | [System Automation Engine](components/SystemAutomationEngine.md) | `SystemAutomationEngine.swift` | Mouse move/click, keyboard type/key combos, coordinate scaling, app launch |
 | [Agent Orchestration Loop](components/AgentOrchestrationLoop.md) | `AgentOrchestrationLoop.swift` | 5-state agent loop, server communication, telemetry logging |
+| [AX Element Reader](components/AXElementReader.md) | `AXElementReader.swift` | Reads Accessibility element tree of the frontmost app |
+| [MCP Server](components/MCPServer.md) | `MCPServer.swift` | Model Context Protocol server for remote agent control |
 | [Keychain Manager](components/KeychainManager.md) | `KeychainManager.swift` | Securely stores/retrieves API keys via the macOS Security framework |
 | [Coordinate Accuracy Test](components/CoordinateAccuracyTest.md) | `CoordinateAccuracyTest.swift` | Validates vision-canvas → physical-Retina coordinate transform |
 | [Gateway Binary Host](components/GatewayBinaryHost.md) | `GatewayBinaryHost.swift` | Manages the TypeScript server as a child process |
@@ -72,8 +74,8 @@
 
 ## Data Flow
 
-1. **OBSERVE** — `ScreenCaptureEngine` captures a screenshot (max 1280 px wide, JPEG, ~30fps stream)
-2. **PLAN** — `AgentOrchestrationLoop` base64-encodes the screenshot and POSTs it to `localhost:3001/api/agent/step` with `X-Provider-API-Key` and `X-Target-Provider` headers
+1. **OBSERVE** — `ScreenCaptureEngine` captures a screenshot (max 1280 px wide, JPEG, ~30fps stream). If `useAXTree` is enabled, `AXElementReader` also reads the Accessibility element tree of the frontmost app.
+2. **PLAN** — `AgentOrchestrationLoop` base64-encodes the screenshot (and optionally the AX tree JSON) and POSTs it to `localhost:3001/api/agent/step` with `X-Provider-API-Key` and `X-Target-Provider` headers
 3. The TypeScript **gateway** reads the headers, instantiates the correct AI provider with the extracted API key, builds a system prompt + message history, and calls `generateText({ toolChoice: "required" })`
 4. The gateway returns `{ tool, arguments, thinking }` — one of `open_app`, `click`, `type`, `key_combo`, `wait`, or `finish`
 5. **EXECUTE** — `SystemAutomationEngine` performs the action (mouse click, keystroke, app launch, etc.)
