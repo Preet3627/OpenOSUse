@@ -18,6 +18,7 @@
 		A00000000000000023 /* GatewayBinaryHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000022 /* GatewayBinaryHost.swift */; };
 		A00000000000000024 /* AXElementReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000025 /* AXElementReader.swift */; };
 		A00000000000000026 /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000027 /* MCPServer.swift */; };
+		A00000000000000029 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000028 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		A00000000000000027 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
 		A0000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A0000000000000000B /* OpenOSUse.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenOSUse.entitlements; sourceTree = "<group>"; };
+		A00000000000000028 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +72,7 @@
 				A00000000000000022 /* GatewayBinaryHost.swift */,
 				A00000000000000025 /* AXElementReader.swift */,
 				A00000000000000027 /* MCPServer.swift */,
+				A00000000000000028 /* Assets.xcassets */,
 				A0000000000000000A /* Info.plist */,
 				A0000000000000000B /* OpenOSUse.entitlements */,
 			);
@@ -137,6 +140,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000029 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,7 +171,7 @@
 		A00000000000000012 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
 				CODE_SIGN_ENTITLEMENTS = "OpenOSUse/OpenOSUse.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
@@ -186,7 +190,7 @@
 		A00000000000000013 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon";
 				CODE_SIGN_ENTITLEMENTS = "OpenOSUse/OpenOSUse.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;

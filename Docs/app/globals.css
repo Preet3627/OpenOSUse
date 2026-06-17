@@ -65,6 +65,86 @@
   }
 }
 
+/* ── gradient animations ──────────────────────────── */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.gradient-hero {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(271 81% 56% / 0.08), hsl(142 71% 45% / 0.08));
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.gradient-card-1 {
+  background: linear-gradient(135deg, hsl(221 83% 53% / 0.06), hsl(271 81% 56% / 0.06));
+}
+
+.gradient-card-2 {
+  background: linear-gradient(135deg, hsl(142 71% 45% / 0.06), hsl(221 83% 53% / 0.06));
+}
+
+.gradient-card-3 {
+  background: linear-gradient(135deg, hsl(31 100% 50% / 0.06), hsl(271 81% 56% / 0.06));
+}
+
+.gradient-card-4 {
+  background: linear-gradient(135deg, hsl(217 91% 60% / 0.06), hsl(142 71% 45% / 0.06));
+}
+
+.btn-vibrant {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+.btn-vibrant:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+}
+.btn-vibrant:active {
+  transform: translateY(0);
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, hsl(221 83% 53%), hsl(271 81% 56%));
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+  color: white;
+  transition: all 0.2s ease;
+}
+.btn-gradient:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px hsl(221 83% 53% / 0.4);
+}
+
+.btn-gradient-green {
+  background: linear-gradient(135deg, hsl(142 71% 45%), hsl(160 84% 39%));
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+  color: white;
+  transition: all 0.2s ease;
+}
+.btn-gradient-green:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px hsl(142 71% 45% / 0.4);
+}
+
 /* ── scrollbar ───────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

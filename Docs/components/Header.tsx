@@ -26,9 +26,11 @@ export function Header() {
               <Menu className="w-5 h-5" />
             </button>
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground text-xs font-bold">O</span>
-              </div>
+              <img
+                src="/logo.png"
+                alt="OpenOSUse"
+                className="w-7 h-7 rounded-lg"
+              />
               <span className="font-semibold text-sm hidden sm:block">OpenOSUse</span>
             </Link>
           </div>

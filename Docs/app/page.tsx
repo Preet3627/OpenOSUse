@@ -1,24 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Cpu, FileCode, Server, Shield, Layers } from "lucide-react";
-import { Markdown } from "@/components/Markdown";
-import { readFileSync } from "fs";
-import { join } from "path";
-
-function readMD(path: string): string {
-  try {
-    return readFileSync(join(process.cwd(), path), "utf-8");
-  } catch {
-    return "";
-  }
-}
+import { ArrowRight, Cpu, FileCode, Server, Shield, Layers, Download, Github, Star, GitFork, Terminal } from "lucide-react";
+import { DownloadSection } from "@/components/DownloadSection";
 
 const componentList = [
   { name: "OpenOSUseApp", desc: "App entry point & lifecycle" },
   { name: "ContentView", desc: "Dashboard UI, controls & telemetry" },
   { name: "PermissionManager", desc: "Accessibility & Screen Recording permissions" },
   { name: "ScreenCaptureEngine", desc: "SCStream-based screen capture" },
-  { name: "SystemAutomationEngine", desc: "Mouse, keyboard, app launch & coordinate scaling" },
-  { name: "AgentOrchestrationLoop", desc: "5-state agent loop & server communication" },
+  { name: "AXElementReader", desc: "Accessibility Tree snapshot" },
+  { name: "SystemAutomationEngine", desc: "Mouse, keyboard, app launch" },
+  { name: "AgentOrchestrationLoop", desc: "5-state agent loop & AX support" },
+  { name: "MCPServer", desc: "MCP protocol server" },
   { name: "KeychainManager", desc: "Secure API key storage" },
   { name: "CoordinateAccuracyTest", desc: "Coordinate transform validation" },
   { name: "GatewayBinaryHost", desc: "Child process management" },
@@ -31,39 +23,68 @@ const features = [
   { icon: Shield, title: "Keychain Security", desc: "API keys stored in macOS Keychain, injected via HTTP headers. Zero .env files" },
 ];
 
-export default function Home() {
-  const summary = readMD("README.md").split("## ")[1]?.split("\n").slice(1, 4).join("\n").trim() ?? "";
+function Badge({ href, src, alt }: { href: string; src: string; alt: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="inline-block">
+      <img src={src} alt={alt} className="h-6" />
+    </a>
+  );
+}
 
+export default function Home() {
   return (
     <div className="space-y-16">
       {/* Hero */}
-      <section className="animate-fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">O</span>
+      <section className="relative overflow-hidden rounded-2xl p-8 gradient-hero border border-border">
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <img src="/logo.png" alt="OpenOSUse" className="w-10 h-10 rounded-xl" />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">OpenOSUse</h1>
+              <p className="text-muted-foreground text-sm">AI-powered macOS computer-use agent</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">OpenOSUse</h1>
-            <p className="text-muted-foreground text-sm">AI-powered macOS computer-use agent</p>
+
+          <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
+            A native macOS agent stack that lets a vision model observe your screen and
+            control your mouse and keyboard to automate any desktop task.
+            <span className="text-primary font-medium"> Open source. Permission-gated. Multi-provider.</span>
+          </p>
+
+          {/* Repo Status */}
+          <div className="flex flex-wrap items-center gap-3 mt-5">
+            <Badge href="https://github.com/Preet3627/OpenOSUse" src="https://img.shields.io/github/stars/Preet3627/OpenOSUse?style=for-the-badge&logo=github&color=cyan" alt="Stars" />
+            <Badge href="https://github.com/Preet3627/OpenOSUse/forks" src="https://img.shields.io/github/forks/Preet3627/OpenOSUse?style=for-the-badge&logo=github&color=blue" alt="Forks" />
+            <Badge href="https://github.com/Preet3627/OpenOSUse/releases" src="https://img.shields.io/github/v/release/Preet3627/OpenOSUse?style=for-the-badge&logo=github&color=brightgreen" alt="Version" />
+            <Badge href="https://github.com/Preet3627/OpenOSUse/issues" src="https://img.shields.io/github/issues/Preet3627/OpenOSUse?style=for-the-badge&logo=github&color=orange" alt="Issues" />
+            <Badge href="https://github.com/Preet3627/OpenOSUse/blob/main/LICENSE" src="https://img.shields.io/badge/License-Apache_2.0-cyan?style=for-the-badge" alt="License" />
+            <Badge href="https://github.com/Preet3627/OpenOSUse/actions" src="https://img.shields.io/github/actions/workflow/status/Preet3627/OpenOSUse/release.yml?style=for-the-badge&logo=github&color=brightgreen" alt="Build" />
           </div>
-        </div>
-        <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-          A native macOS agent stack that lets a vision model observe your screen and
-          control your mouse and keyboard to automate any desktop task.
-        </p>
-        <div className="flex items-center gap-3 mt-6">
-          <Link
-            href="/architecture"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Architecture <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            href="/server/gateway"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-          >
-            Gateway Server <ArrowRight className="w-4 h-4" />
-          </Link>
+
+          <div className="flex items-center gap-3 mt-6">
+            <Link
+              href="/architecture"
+              className="btn-gradient inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold"
+            >
+              Architecture <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/server/gateway"
+              className="btn-vibrant inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-border bg-card hover:bg-accent transition-colors"
+            >
+              <Terminal className="w-4 h-4" />
+              Gateway Server
+            </Link>
+            <a
+              href="https://github.com/Preet3627/OpenOSUse"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-vibrant inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border border-border bg-card hover:bg-accent transition-colors"
+            >
+              <Github className="w-4 h-4" />
+              GitHub
+            </a>
+          </div>
         </div>
       </section>
 
@@ -71,13 +92,17 @@ export default function Home() {
       <section className="animate-fade-in">
         <h2 className="text-xl font-semibold mb-4">Key Features</h2>
         <div className="grid sm:grid-cols-2 gap-3">
-          {features.map((f) => (
+          {features.map((f, i) => (
             <div
               key={f.title}
-              className="p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-colors"
+              className={`p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-all group ${
+                i === 0 ? "gradient-card-1" : i === 1 ? "gradient-card-2" : i === 2 ? "gradient-card-3" : "gradient-card-4"
+              }`}
             >
               <div className="flex items-center gap-3 mb-2">
-                <f.icon className="w-5 h-5 text-primary" />
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <f.icon className="w-5 h-5 text-primary" />
+                </div>
                 <h3 className="font-medium text-sm">{f.title}</h3>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
@@ -88,14 +113,17 @@ export default function Home() {
 
       {/* Architecture diagram */}
       <section className="animate-fade-in">
-        <h2 className="text-xl font-semibold mb-4">Architecture</h2>
-        <div className="p-6 rounded-xl border border-border bg-card">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <Layers className="w-5 h-5 text-primary" />
+          Architecture
+        </h2>
+        <div className="p-6 rounded-xl border border-border bg-card gradient-card-1">
           <pre className="text-xs leading-relaxed text-muted-foreground !bg-transparent !border-none !p-0 overflow-x-auto">
 {`┌─────────────────────────────────────────────────────┐
 │              OpenOSUse.app (Swift)                   │
 │  ┌──────────┐  ┌────────────────┐  ┌──────────────┐  │
-│  │Permission│  │ ScreenCapture  │  │SystemAuto-   │  │
-│  │ Manager  │  │ Engine         │  │mationEngine  │  │
+│  │Permission│  │ ScreenCapture  │  │AXElement-   │  │
+│  │ Manager  │  │ Engine         │  │Reader       │  │
 │  └──────────┘  └───────┬────────┘  └──────┬───────┘  │
 │                         │                  │          │
 │  ┌──────────────────────▼──────────────────▼───────┐  │
@@ -106,6 +134,9 @@ export default function Home() {
 │                          ▼                            │
 │                 ┌──────────────────┐                   │
 │                 │ GatewayBinaryHost│ ← child Process   │
+│                 └──────────────────┘                   │
+│                 ┌──────────────────┐                   │
+│                 │ MCPServer (TCP)  │ ← MCP clients     │
 │                 └──────────────────┘                   │
 └──────────────────────┬───────────────────────────────┘
                        │ localhost:3001
@@ -174,12 +205,15 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Download Section */}
+      <DownloadSection />
+
       {/* Data Flow */}
       <section className="animate-fade-in">
         <h2 className="text-xl font-semibold mb-4">Data Flow</h2>
         <div className="space-y-0">
           {[
-            { step: "1 OBSERVE", desc: "ScreenCaptureEngine captures a screenshot (1280px, JPEG)" },
+            { step: "1 OBSERVE", desc: "ScreenCaptureEngine captures a screenshot (1280px, JPEG). Optional AX Tree readout." },
             { step: "2 PLAN", desc: "Base64 screenshot POSTed to gateway with X-Provider-API-Key header" },
             { step: "3 ROUTE", desc: "Gateway instantiates the correct AI provider with the header-derived key" },
             { step: "4 GENERATE", desc: "generateText({ toolChoice: \"required\" }) returns a tool call" },
@@ -198,11 +232,15 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border pt-6 text-center text-xs text-muted-foreground">
-        <p>OpenOSUse &copy; {new Date().getFullYear()} &mdash; MIT License</p>
+        <p>OpenOSUse &copy; {new Date().getFullYear()} &mdash; Apache 2.0 License</p>
         <p className="mt-1">
-          Built with Next.js, Tailwind CSS, Radix UI, cmdk, Framer Motion &middot;{" "}
+          Built with SwiftUI, Next.js, Tailwind CSS, Radix UI &middot;{" "}
           <a href="https://github.com/Preet3627/OpenOSUse" className="underline hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">
             GitHub
+          </a>
+          {" "}&middot;{" "}
+          <a href="https://github.com/Preet3627/OpenOSUse/releases" className="underline hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">
+            Releases
           </a>
         </p>
       </footer>

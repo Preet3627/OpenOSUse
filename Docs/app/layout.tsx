@@ -8,6 +8,16 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: TITLE, template: `%s — ${TITLE}` },
   description: DESCRIPTION,
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [{ url: "/icon.png" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
